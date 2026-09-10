@@ -1,0 +1,162 @@
+@using Microsoft.Extensions.Options
+@using WoodOnlineService.Models
+@model WoodOnlineService.Services.CartSummary
+@inject IOptions<SiteSettings> Site
+@{
+    var site = Site.Value;
+    ViewData["Title"] = "Your Cart";
+}
+
+<div class="bg-wood-50 border-bottom border-wood py-4">
+    <div class="container">
+        <h1 class="mb-1">Your Cart</h1>
+        <p class="text-muted-wood mb-0">@Model.ItemCount item@(Model.ItemCount == 1 ? "" : "s")</p>
+    </div>
+</div>
+
+<div class="container py-4">
+    @if (Model.IsEmpty)
+    {
+        <div class="panel">
+            <div class="empty-state">
+                <div style="font-size:3.5rem;">🛒</div>
+                <h3>Your cart is empty</h3>
+                <p>Browse our products and add whatever you like to your cart.</p>
+                <a asp-controller="Shop" asp-action="Index" class="btn btn-wood mt-2">Browse Products</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="panel">
+                    <div class="panel-header d-flex justify-content-between align-items-center">
+                        <span>Cart Items</span>
+                        <form asp-action="Clear" method="post" onsubmit="return confirm('Empty your entire cart?');">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Clear Cart</button>
+                        </form>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table class="table table-wood mb-0 align-middle">
+                            <thead>
+                                <tr>
+                                    <th colspan="2">Product</th>
+                                    <th class="text-end">Price</th>
+                                    <th class="text-center" style="width:150px;">Quantity</th>
+                                    <th class="text-end">Total</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var line in Model.Lines)
+                                {
+                                    <tr>
+                                        <td style="width:90px;">
+                                            <a asp-controller="Shop" asp-action="Details" asp-route-id="@line.Product.ProductId">
+                                                <img src="@(line.Product.ImageUrl ?? "/img/cat-custom.svg")" alt="@line.Product.Name"
+                                                     style="width:76px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--line);" />
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <a asp-controller="Shop" asp-action="Details" asp-route-id="@line.Product.ProductId"
+                                               class="fw-bold" style="color:var(--wood-900);">@line.Product.Name</a>
+                                            @if (!string.IsNullOrWhiteSpace(line.Product.WoodType))
+                                            {
+                                                <div class="small text-muted-wood">@line.Product.WoodType</div>
+                                            }
+                                            @if (line.Item.Quantity >= line.Product.StockQuantity)
+                                            {
+                                                <div class="small text-danger">Only @line.Product.StockQuantity available</div>
+                                            }
+                                        </td>
+                                        <td class="text-end">₹@line.Product.Price.ToString("N0")</td>
+                                        <td>
+                                            <form asp-action="Update" method="post" class="d-flex justify-content-center">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="productId" value="@line.Product.ProductId" />
+                                                <input type="number" name="quantity" value="@line.Item.Quantity"
+                                                       min="1" max="@line.Product.StockQuantity"
+                                                       class="form-control form-control-sm text-center" style="width:70px;"
+                                                       onchange="this.form.submit()" />
+                                            </form>
+                                        </td>
+                                        <td class="text-end fw-bold">₹@line.LineTotal.ToString("N0")</td>
+                                        <td class="text-end">
+                                            <form asp-action="Remove" method="post">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="productId" value="@line.Product.ProductId" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove">✕</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <a asp-controller="Shop" asp-action="Index" class="btn btn-outline-wood mt-3">← Continue Shopping</a>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="panel" style="position:sticky;top:1rem;">
+                    <div class="panel-header">Order Summary</div>
+                    <div class="panel-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Subtotal (@Model.ItemCount item@(Model.ItemCount == 1 ? "" : "s"))</span>
+                            <span class="fw-bold">₹@Model.SubTotal.ToString("N0")</span>
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Delivery</span>
+                            @if (Model.ShippingCharge <= 0)
+                            {
+                                <span class="text-success fw-bold">Free</span>
+                            }
+                            else
+                            {
+                                <span class="fw-bold">₹@Model.ShippingCharge.ToString("N0")</span>
+                            }
+                        </div>
+
+                        @if (Model.ShippingCharge > 0)
+                        {
+                            var remaining = site.FreeShippingAbove - Model.SubTotal;
+                            <div class="alert alert-warning py-2 small mb-2">
+                                ₹@remaining.ToString("N0") more and your delivery becomes free.
+                            </div>
+                        }
+
+                        <hr />
+
+                        <div class="d-flex justify-content-between mb-3">
+                            <span class="fw-bold" style="font-size:1.05rem;">Total</span>
+                            <span class="price">₹@Model.Total.ToString("N0")</span>
+                        </div>
+
+                        <a asp-controller="Checkout" asp-action="Index" class="btn btn-wood btn-lg w-100">
+                            Proceed to Checkout →
+                        </a>
+
+                        <p class="small text-muted-wood text-center mt-3 mb-0">
+                            Cash on Delivery is available.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="panel mt-3">
+                    <div class="panel-body">
+                        <p class="small text-muted-wood mb-2">
+                            💬 Something to ask before ordering? Talk to us directly.
+                        </p>
+                        <a href="https://wa.me/@site.WhatsAppNumber" target="_blank" rel="noopener"
+                           class="btn btn-whatsapp btn-sm w-100">Ask on WhatsApp</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>

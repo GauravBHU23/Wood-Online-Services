@@ -1,0 +1,206 @@
+@model WoodOnlineService.Areas.Admin.ViewModels.ProductFormViewModel
+@{
+    var isEdit = Model.ProductId > 0;
+    ViewData["Title"] = isEdit ? $"Edit — {Model.Name}" : "New Product";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="mb-1">@(isEdit ? "Edit Product" : "New product")</h1>
+        <p class="text-muted-wood mb-0">@(isEdit ? Model.Name : "Add a new item to the site")</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-wood">← All products</a>
+</div>
+
+<form asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.ProductId" method="post" enctype="multipart/form-data">
+    @Html.AntiForgeryToken()
+    <input asp-for="ProductId" type="hidden" />
+    <input asp-for="ImageUrl" type="hidden" />
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="panel mb-3">
+                <div class="panel-header">Basic Information</div>
+                <div class="panel-body">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small"></div>
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label asp-for="Name" class="form-label"></label> <span class="text-danger">*</span>
+                            <input asp-for="Name" class="form-control" placeholder="e.g. 6-Seater Dining Table" />
+                            <span asp-validation-for="Name" class="field-validation-error"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="CategoryId" class="form-label"></label> <span class="text-danger">*</span>
+                            <select asp-for="CategoryId" class="form-select">
+                                <option value="">— Please choose a category —</option>
+                                @foreach (var c in Model.Categories)
+                                {
+                                    <option value="@c.CategoryId" selected="@(Model.CategoryId == c.CategoryId)">@c.Name</option>
+                                }
+                            </select>
+                            <span asp-validation-for="CategoryId" class="field-validation-error"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="WoodType" class="form-label"></label>
+                            <input asp-for="WoodType" class="form-control" list="woodTypes" placeholder="e.g. Sheesham" />
+                            <datalist id="woodTypes">
+                                <option value="Sheesham"></option>
+                                <option value="Teak"></option>
+                                <option value="Mango Wood"></option>
+                                <option value="Pine"></option>
+                                <option value="Walnut Finish"></option>
+                            </datalist>
+                        </div>
+
+                        <div class="col-12">
+                            <label asp-for="Dimensions" class="form-label"></label>
+                            <input asp-for="Dimensions" class="form-control" placeholder='e.g. 72" x 36" x 30"' />
+                        </div>
+
+                        <div class="col-12">
+                            <label asp-for="Description" class="form-label"></label>
+                            <textarea asp-for="Description" rows="7" class="form-control"
+                                      placeholder="Wood quality, how it is made, what makes it special. Whatever you want the customer to know."></textarea>
+                            <span class="small text-muted-wood">This appears on the product page.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">Price and Stock</div>
+                <div class="panel-body">
+                    <div class="form-check mb-3 p-3 border rounded" style="background:var(--wood-50);">
+                        <input asp-for="IsCustomOrder" class="form-check-input" id="isCustomOrder" />
+                        <label asp-for="IsCustomOrder" class="form-check-label fw-bold"></label>
+                        <div class="small text-muted-wood">
+                            Ticking this removes price and stock. The customer sees "Price on request"
+                            and sends an inquiry instead of adding to cart. Use it for temples, custom doors and similar work.
+                        </div>
+                    </div>
+
+                    <div id="pricingFields" class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="Price" class="form-label"></label>
+                            <input asp-for="Price" class="form-control" type="number" step="1" min="0" />
+                            <span asp-validation-for="Price" class="field-validation-error"></span>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label asp-for="OldPrice" class="form-label"></label>
+                            <input asp-for="OldPrice" class="form-control" type="number" step="1" min="0" />
+                            <span class="small text-muted-wood">Used to show a discount. Leave it empty if there is no discount.</span>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label asp-for="StockQuantity" class="form-label"></label>
+                            <input asp-for="StockQuantity" class="form-control" type="number" step="1" min="0" />
+                            <span asp-validation-for="StockQuantity" class="field-validation-error"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="panel mb-3">
+                <div class="panel-header">Visibility</div>
+                <div class="panel-body">
+                    <div class="form-check mb-2">
+                        <input asp-for="IsAvailable" class="form-check-input" />
+                        <label asp-for="IsAvailable" class="form-check-label"></label>
+                    </div>
+                    <div class="form-check">
+                        <input asp-for="IsFeatured" class="form-check-input" />
+                        <label asp-for="IsFeatured" class="form-check-label"></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel mb-3">
+                <div class="panel-header">Main image</div>
+                <div class="panel-body">
+                    @if (!string.IsNullOrWhiteSpace(Model.ImageUrl))
+                    {
+                        <img src="@Model.ImageUrl" alt="" class="img-fluid rounded mb-2"
+                             style="border:1px solid var(--line);max-height:180px;" />
+                    }
+                    <input asp-for="MainImage" type="file" class="form-control" accept="image/*" />
+                    <span asp-validation-for="MainImage" class="field-validation-error"></span>
+                    <div class="small text-muted-wood mt-1">
+                        JPG, PNG or WEBP, up to 5 MB. Photographs taken in good light look best.
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel mb-3">
+                <div class="panel-header">More Images</div>
+                <div class="panel-body">
+                    @if (Model.ExistingImages.Count > 0)
+                    {
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            @foreach (var img in Model.ExistingImages)
+                            {
+                                <div class="position-relative">
+                                    <img src="@img.ImagePath" alt=""
+                                         style="width:76px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--line);" />
+                                    <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 p-0"
+                                            style="width:20px;height:20px;line-height:1;font-size:.7rem;"
+                                            onclick="deleteImage(@img.ImageId)">✕</button>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <input asp-for="GalleryImages" type="file" class="form-control" accept="image/*" multiple />
+                    <div class="small text-muted-wood mt-1">You can select more than one.</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-body d-grid gap-2">
+                    <button type="submit" class="btn btn-wood btn-lg">
+                        @(isEdit ? "Save Changes" : "Add Product")
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-wood">Cancel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@if (isEdit)
+{
+    <form id="deleteImageForm" asp-action="DeleteImage" method="post" class="d-none">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="imageId" id="deleteImageId" />
+    </form>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function deleteImage(id) {
+            if (!confirm('Remove this image?')) return;
+            document.getElementById('deleteImageId').value = id;
+            document.getElementById('deleteImageForm').submit();
+        }
+
+        // Custom-order products are quoted, so price/stock inputs would only mislead.
+        (function () {
+            var toggle = document.getElementById('isCustomOrder');
+            var fields = document.getElementById('pricingFields');
+            if (!toggle || !fields) return;
+
+            function sync() {
+                fields.style.opacity = toggle.checked ? '.45' : '1';
+                fields.querySelectorAll('input').forEach(function (i) { i.disabled = toggle.checked; });
+            }
+            toggle.addEventListener('change', sync);
+            sync();
+        })();
+    </script>
+}

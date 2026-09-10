@@ -1,0 +1,131 @@
+@model WoodOnlineService.Areas.Admin.ViewModels.AdminListViewModel<WoodOnlineService.Models.Order>
+@{
+    ViewData["Title"] = "Orders";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="mb-1">Orders</h1>
+        <p class="text-muted-wood mb-0">@Model.TotalCount order@(Model.TotalCount == 1 ? "" : "s")</p>
+    </div>
+</div>
+
+<div class="panel mb-3">
+    <div class="panel-body py-3">
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <a asp-action="Index" asp-route-search="@Model.Search"
+               class="btn btn-sm @(string.IsNullOrEmpty(Model.Status) ? "btn-wood" : "btn-outline-wood")">All</a>
+            <a asp-action="Index" asp-route-status="Pending" asp-route-search="@Model.Search"
+               class="btn btn-sm @(Model.Status == "Pending" ? "btn-wood" : "btn-outline-wood")">
+                Pending (@ViewBag.PendingCount)
+            </a>
+            <a asp-action="Index" asp-route-status="Confirmed" asp-route-search="@Model.Search"
+               class="btn btn-sm @(Model.Status == "Confirmed" ? "btn-wood" : "btn-outline-wood")">
+                Confirmed (@ViewBag.ConfirmedCount)
+            </a>
+            <a asp-action="Index" asp-route-status="Shipped" asp-route-search="@Model.Search"
+               class="btn btn-sm @(Model.Status == "Shipped" ? "btn-wood" : "btn-outline-wood")">
+                Shipped (@ViewBag.ShippedCount)
+            </a>
+            <a asp-action="Index" asp-route-status="Delivered" asp-route-search="@Model.Search"
+               class="btn btn-sm @(Model.Status == "Delivered" ? "btn-wood" : "btn-outline-wood")">Delivered</a>
+            <a asp-action="Index" asp-route-status="Cancelled" asp-route-search="@Model.Search"
+               class="btn btn-sm @(Model.Status == "Cancelled" ? "btn-wood" : "btn-outline-wood")">Cancelled</a>
+        </div>
+
+        <form method="get" asp-action="Index" class="row g-2">
+            <input type="hidden" name="status" value="@Model.Status" />
+            <div class="col-md-9">
+                <input type="search" name="search" value="@Model.Search" class="form-control"
+                       placeholder="Search by order number, name or phone..." />
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-wood flex-grow-1">Search</button>
+                @if (!string.IsNullOrWhiteSpace(Model.Search))
+                {
+                    <a asp-action="Index" asp-route-status="@Model.Status" class="btn btn-outline-secondary">Reset</a>
+                }
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="panel">
+    @if (Model.Items.Count == 0)
+    {
+        <div class="empty-state">
+            <div style="font-size:3rem;">📦</div>
+            <h3>No orders found</h3>
+            <p>Whenever a customer places an order it will appear here.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table table-wood mb-0">
+                <thead>
+                    <tr>
+                        <th>Order</th>
+                        <th>Customer</th>
+                        <th>Address</th>
+                        <th class="text-center">Items</th>
+                        <th class="text-end">Total</th>
+                        <th class="text-center">Payment</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-end"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var o in Model.Items)
+                    {
+                        <tr class="@(o.OrderStatus == OrderStatus.Pending ? "table-warning" : "")">
+                            <td>
+                                <div class="fw-bold small">@o.OrderNumber</div>
+                                <div class="small text-muted-wood">@o.OrderDate.ToLocalTime().ToString("dd MMM, hh:mm tt")</div>
+                            </td>
+                            <td class="small">
+                                @o.ShippingName<br />
+                                <a href="tel:@o.ShippingPhone" class="text-muted-wood">@o.ShippingPhone</a>
+                            </td>
+                            <td class="small text-muted-wood" style="max-width:200px;">
+                                <div class="text-truncate">@o.ShippingCity, @o.ShippingState</div>
+                                <div>@o.ShippingPinCode</div>
+                            </td>
+                            <td class="text-center">@o.Items.Sum(i => i.Quantity)</td>
+                            <td class="text-end fw-bold">₹@o.TotalAmount.ToString("N0")</td>
+                            <td class="text-center small">
+                                <div>@(o.PaymentMethod == PaymentMethod.CashOnDelivery ? "COD" : "Online")</div>
+                                <span class="badge @(o.PaymentStatus == PaymentStatus.Paid ? "bg-success" : "bg-secondary")">
+                                    @o.PaymentStatus
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <partial name="_OrderStatusBadge" model="o.OrderStatus" />
+                            </td>
+                            <td class="text-end">
+                                <a asp-action="Details" asp-route-id="@o.OrderId" class="btn btn-sm btn-outline-wood">View</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="panel-body">
+                <nav>
+                    <ul class="pagination justify-content-center mb-0">
+                        @for (var i = 1; i <= Model.TotalPages; i++)
+                        {
+                            <li class="page-item @(i == Model.Page ? "active" : "")">
+                                <a class="page-link" asp-action="Index" asp-route-page="@i"
+                                   asp-route-status="@Model.Status" asp-route-search="@Model.Search">@i</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            </div>
+        }
+    }
+</div>

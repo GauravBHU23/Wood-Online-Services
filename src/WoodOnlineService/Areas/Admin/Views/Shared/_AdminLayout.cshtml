@@ -1,0 +1,140 @@
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.Extensions.Options
+@using WoodOnlineService.Data
+@using WoodOnlineService.Models
+@inject IOptions<SiteSettings> Site
+@inject UserManager<ApplicationUser> UserManager
+@inject ApplicationDbContext Db
+@{
+    var site = Site.Value;
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+
+    var newInquiries = await Db.Inquiries.CountAsync(i => i.Status == InquiryStatus.New);
+    var pendingOrders = await Db.Orders.CountAsync(o => o.OrderStatus == OrderStatus.Pending);
+    var pendingReviews = await Db.Reviews.CountAsync(r => r.Status == ReviewStatus.Pending);
+
+    string NavClass(string name) => controller.Equals(name, StringComparison.OrdinalIgnoreCase) ? "nav-link active" : "nav-link";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — Admin · @site.ShopName</title>
+    <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-wood sticky-top no-print">
+        <div class="container-fluid px-3 px-lg-4">
+            <a class="navbar-brand d-flex align-items-center gap-2" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
+                <img src="~/img/logo.svg" alt="@site.ShopName" />
+                <span class="badge badge-wood">ADMIN</span>
+            </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNav" aria-label="Menu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="adminNav">
+                <ul class="navbar-nav ms-auto align-items-lg-center">
+                    <li class="nav-item">
+                        <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index" target="_blank">
+                            🌐 View Site
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            👤 @(UserManager.GetUserAsync(User).Result?.FullName ?? "Admin")
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="Profile">Profile</a></li>
+                            <li><a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="ChangePassword">Change Password</a></li>
+                            <li><hr class="dropdown-divider" /></li>
+                            <li>
+                                <form asp-area="" asp-controller="Account" asp-action="Logout" method="post" class="px-1">
+                                    <button type="submit" class="dropdown-item">Logout</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-3 px-lg-4 py-4">
+        <div class="row g-4">
+            <aside class="col-lg-2 no-print">
+                <div class="admin-sidebar">
+                    <nav class="nav flex-column">
+                        <div class="sidebar-heading">Overview</div>
+                        <a class="@NavClass("Dashboard")" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
+                            📊 Dashboard
+                        </a>
+
+                        <div class="sidebar-heading">Catalog</div>
+                        <a class="@NavClass("Products")" asp-area="Admin" asp-controller="Products" asp-action="Index">
+                            🪑 Products
+                        </a>
+                        <a class="@NavClass("Categories")" asp-area="Admin" asp-controller="Categories" asp-action="Index">
+                            📁 Categories
+                        </a>
+
+                        <div class="sidebar-heading">Customers</div>
+                        <a class="@NavClass("Orders")" asp-area="Admin" asp-controller="Orders" asp-action="Index">
+                            📦 Orders
+                            @if (pendingOrders > 0)
+                            {
+                                <span class="badge bg-warning text-dark ms-auto">@pendingOrders</span>
+                            }
+                        </a>
+                        <a class="@NavClass("Inquiries")" asp-area="Admin" asp-controller="Inquiries" asp-action="Index">
+                            💬 Inquiries
+                            @if (newInquiries > 0)
+                            {
+                                <span class="badge bg-danger ms-auto">@newInquiries</span>
+                            }
+                        </a>
+                        <a class="@NavClass("Reviews")" asp-area="Admin" asp-controller="Reviews" asp-action="Index">
+                            ⭐ Reviews
+                            @if (pendingReviews > 0)
+                            {
+                                <span class="badge bg-warning text-dark ms-auto">@pendingReviews</span>
+                            }
+                        </a>
+                    </nav>
+                </div>
+            </aside>
+
+            <div class="col-lg-10">
+                @if (TempData["Success"] is string ok)
+                {
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        ✅ @ok
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                }
+                @if (TempData["Error"] is string err)
+                {
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        ⚠️ @err
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                }
+
+                @RenderBody()
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

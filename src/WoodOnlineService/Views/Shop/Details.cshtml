@@ -1,0 +1,289 @@
+@using Microsoft.Extensions.Options
+@model WoodOnlineService.ViewModels.ProductDetailViewModel
+@inject IOptions<SiteSettings> Site
+@{
+    var p = Model.Product;
+    var site = Site.Value;
+    ViewData["Title"] = p.Name;
+
+    var waText = Uri.EscapeDataString($"Hello, I would like more information about \"{p.Name}\".");
+}
+
+<div class="bg-wood-50 border-bottom border-wood py-3">
+    <div class="container">
+        <nav aria-label="Breadcrumb">
+            <ol class="breadcrumb mb-0 small">
+                <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Home</a></li>
+                <li class="breadcrumb-item"><a asp-controller="Shop" asp-action="Index">Products</a></li>
+                @if (p.Category is not null)
+                {
+                    <li class="breadcrumb-item">
+                        <a asp-controller="Shop" asp-action="Index" asp-route-categoryId="@p.CategoryId">@p.Category.Name</a>
+                    </li>
+                }
+                <li class="breadcrumb-item active" aria-current="page">@p.Name</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row g-4">
+        <!-- Gallery -->
+        <div class="col-lg-6">
+            <img id="mainImage" src="@(p.ImageUrl ?? "/img/cat-custom.svg")" alt="@p.Name"
+                 class="gallery-main mb-3" width="600" height="450" />
+
+            @{
+                var thumbs = new List<string>();
+                if (!string.IsNullOrWhiteSpace(p.ImageUrl)) thumbs.Add(p.ImageUrl);
+                thumbs.AddRange(p.Images.Select(i => i.ImagePath));
+            }
+            @if (thumbs.Count > 1)
+            {
+                <div class="d-flex gap-2 flex-wrap">
+                    @for (var i = 0; i < thumbs.Count; i++)
+                    {
+                        <img src="@thumbs[i]" alt="@p.Name view @(i + 1)"
+                             class="gallery-thumb @(i == 0 ? "active" : "")" loading="lazy" />
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Info -->
+        <div class="col-lg-6">
+            <div class="d-flex flex-wrap gap-2 mb-2">
+                @if (p.IsCustomOrder)
+                {
+                    <span class="badge badge-custom">Custom Order</span>
+                }
+                @if (p.IsFeatured)
+                {
+                    <span class="badge badge-wood">Featured</span>
+                }
+                @if (p.DiscountPercent > 0)
+                {
+                    <span class="badge badge-discount">@p.DiscountPercent% OFF</span>
+                }
+            </div>
+
+            <h1 class="mb-2">@p.Name</h1>
+
+            <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+                @if (!string.IsNullOrWhiteSpace(p.WoodType))
+                {
+                    <span class="wood-chip">@p.WoodType</span>
+                }
+
+                @if (p.ReviewCount > 0)
+                {
+                    <a href="#reviews" class="text-decoration-none">
+                        <partial name="_StarRating" model="p.AverageRating"
+                                 view-data='new ViewDataDictionary(ViewData) { { "Count", p.ReviewCount }, { "Size", ".95rem" } }' />
+                    </a>
+                }
+                else
+                {
+                    <a href="#reviews" class="small text-muted-wood">Be the first to review</a>
+                }
+            </div>
+
+            <div class="my-3">
+                @if (p.IsCustomOrder)
+                {
+                    <div class="price" style="font-size:1.4rem;">Price on request</div>
+                    <p class="small text-muted-wood mb-0">
+                        This item is made to your measurements and design. Send us an inquiry
+                        and we will prepare a quotation for you.
+                    </p>
+                }
+                else
+                {
+                    <span class="price" style="font-size:2rem;">&#8377;@p.Price.ToString("N0")</span>
+                    @if (p.OldPrice is > 0 && p.OldPrice > p.Price)
+                    {
+                        <span class="price-old" style="font-size:1.1rem;">&#8377;@p.OldPrice.Value.ToString("N0")</span>
+                        <span class="badge badge-discount ms-2">
+                            Save &#8377;@((p.OldPrice.Value - p.Price).ToString("N0"))
+                        </span>
+                    }
+
+                    <div class="mt-2">
+                        @if (p.InStock)
+                        {
+                            <span class="text-success fw-bold">In Stock</span>
+                            @if (p.StockQuantity <= 3)
+                            {
+                                <span class="text-danger small ms-2">Only @p.StockQuantity left!</span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="text-danger fw-bold">Out of Stock</span>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Actions -->
+            <div class="my-4">
+                @if (p.IsCustomOrder || !p.InStock)
+                {
+                    <div class="d-flex flex-wrap gap-2">
+                        <a asp-controller="Home" asp-action="Contact" asp-route-productId="@p.ProductId"
+                           class="btn btn-wood btn-lg">
+                            @(p.IsCustomOrder ? "Request a Quote" : "Ask About Availability")
+                        </a>
+                        <a href="https://wa.me/@site.WhatsAppNumber?text=@waText"
+                           target="_blank" rel="noopener noreferrer" class="btn btn-whatsapp btn-lg">
+                            WhatsApp
+                        </a>
+                    </div>
+                }
+                else
+                {
+                    <form asp-controller="Cart" asp-action="Add" method="post"
+                          class="d-flex flex-wrap gap-2 align-items-center">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="productId" value="@p.ProductId" />
+
+                        <div class="input-group" style="width:160px;">
+                            <button class="btn btn-outline-wood" type="button"
+                                    data-qty-step="-1" data-qty-target="qty" aria-label="Decrease quantity">&minus;</button>
+                            <input type="number" name="quantity" id="qty" value="1" min="1" max="@p.StockQuantity"
+                                   class="form-control text-center" aria-label="Quantity" />
+                            <button class="btn btn-outline-wood" type="button"
+                                    data-qty-step="1" data-qty-target="qty" aria-label="Increase quantity">+</button>
+                        </div>
+
+                        <button type="submit" class="btn btn-wood btn-lg" data-busy-text="Adding...">
+                            Add to Cart
+                        </button>
+                        <a href="https://wa.me/@site.WhatsAppNumber?text=@waText"
+                           target="_blank" rel="noopener noreferrer" class="btn btn-whatsapp btn-lg">
+                            WhatsApp
+                        </a>
+                    </form>
+                }
+            </div>
+
+            <!-- Specifications -->
+            <div class="panel mb-3">
+                <div class="panel-header">Specifications</div>
+                <div class="table-wrap">
+                    <table class="table table-sm spec-table mb-0">
+                        <tbody>
+                            @if (p.Category is not null)
+                            {
+                                <tr><th>Category</th><td>@p.Category.Name</td></tr>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(p.WoodType))
+                            {
+                                <tr><th>Wood Type</th><td>@p.WoodType</td></tr>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(p.Dimensions))
+                            {
+                                <tr><th>Dimensions (L&times;W&times;H)</th><td>@p.Dimensions</td></tr>
+                            }
+                            @if (!p.IsCustomOrder)
+                            {
+                                <tr>
+                                    <th>Availability</th>
+                                    <td>@(p.InStock ? $"{p.StockQuantity} available" : "Out of stock")</td>
+                                </tr>
+                            }
+                            <tr><th>Finish</th><td>Natural, Walnut or Mahogany — your choice</td></tr>
+                            <tr>
+                                <th>Delivery</th>
+                                <td>
+                                    Free above &#8377;@site.FreeShippingAbove.ToString("N0"),
+                                    otherwise &#8377;@site.ShippingCharge.ToString("N0")
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(p.Description))
+            {
+                <div class="panel">
+                    <div class="panel-header">About This Product</div>
+                    <div class="panel-body">
+                        <p class="mb-0" style="white-space:pre-line;">@p.Description</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Reviews -->
+    <div class="row mt-5">
+        <div class="col-lg-10 mx-auto">
+            <partial name="_ReviewSection" model="Model" />
+        </div>
+    </div>
+
+    <!-- Inquiry -->
+    <div class="row mt-4">
+        <div class="col-lg-8 mx-auto">
+            <div class="panel">
+                <div class="panel-header">Have a Question About This Product?</div>
+                <div class="panel-body">
+                    <form asp-controller="Home" asp-action="Contact" method="post"
+                          novalidate data-validate-on-submit>
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="ProductId" value="@p.ProductId" />
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" for="inqName">Your Name <span class="text-danger">*</span></label>
+                                <input type="text" id="inqName" name="Name" class="form-control" maxlength="100"
+                                       data-validate="required|min:2" data-label="Your name" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="inqPhone">Phone / WhatsApp <span class="text-danger">*</span></label>
+                                <input type="tel" id="inqPhone" name="Phone" class="form-control" maxlength="20"
+                                       data-validate="required|phone" data-label="Phone number" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="inqEmail">Email (optional)</label>
+                                <input type="email" id="inqEmail" name="Email" class="form-control" maxlength="150"
+                                       data-validate="email" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="inqMsg">Message <span class="text-danger">*</span></label>
+                                <textarea id="inqMsg" name="Message" rows="4" class="form-control" maxlength="2000"
+                                          data-validate="required|min:10" data-label="Your message"
+                                          data-counter="inqCounter">@Model.InquiryForm.Message</textarea>
+                                <div class="char-counter" id="inqCounter">0 / 2000</div>
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-wood" data-busy-text="Sending...">
+                                    Send Inquiry
+                                </button>
+                                <span class="small text-muted-wood ms-2">We usually reply within 24 hours.</span>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.Related.Count > 0)
+    {
+        <div class="mt-5">
+            <h2 class="section-title">You May Also Like</h2>
+            <div class="row g-3 g-md-4">
+                @foreach (var related in Model.Related)
+                {
+                    <div class="col-6 col-md-3">
+                        @await Html.PartialAsync("_ProductCard", related)
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>

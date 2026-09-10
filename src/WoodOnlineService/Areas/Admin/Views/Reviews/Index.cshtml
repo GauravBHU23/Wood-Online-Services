@@ -1,0 +1,181 @@
+@model WoodOnlineService.Areas.Admin.ViewModels.AdminListViewModel<WoodOnlineService.Models.Review>
+@{
+    ViewData["Title"] = "Reviews";
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="mb-1">Reviews</h1>
+        <p class="text-muted-wood mb-0">Moderate customer ratings and comments</p>
+    </div>
+</div>
+
+<div class="panel mb-3">
+    <div class="panel-body py-3">
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <a asp-action="Index" asp-route-search="@Model.Search"
+               class="btn btn-sm @(string.IsNullOrEmpty(Model.Status) ? "btn-wood" : "btn-outline-wood")">
+                All (@Model.TotalCount)
+            </a>
+            <a asp-action="Index" asp-route-status="Pending" asp-route-search="@Model.Search"
+               class="btn btn-sm @(Model.Status == "Pending" ? "btn-wood" : "btn-outline-wood")">
+                Pending (@ViewBag.PendingCount)
+            </a>
+            <a asp-action="Index" asp-route-status="Approved" asp-route-search="@Model.Search"
+               class="btn btn-sm @(Model.Status == "Approved" ? "btn-wood" : "btn-outline-wood")">
+                Approved (@ViewBag.ApprovedCount)
+            </a>
+            <a asp-action="Index" asp-route-status="Rejected" asp-route-search="@Model.Search"
+               class="btn btn-sm @(Model.Status == "Rejected" ? "btn-wood" : "btn-outline-wood")">
+                Rejected (@ViewBag.RejectedCount)
+            </a>
+        </div>
+
+        <form method="get" asp-action="Index" class="row g-2">
+            <input type="hidden" name="status" value="@Model.Status" />
+            <div class="col-md-9">
+                <input type="search" name="search" value="@Model.Search" class="form-control"
+                       placeholder="Search by author, product or comment..." />
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-wood flex-grow-1" data-busy-text="Searching...">Search</button>
+                @if (!string.IsNullOrWhiteSpace(Model.Search))
+                {
+                    <a asp-action="Index" asp-route-status="@Model.Status" class="btn btn-outline-secondary">Reset</a>
+                }
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.Items.Count == 0)
+{
+    <div class="panel">
+        <div class="empty-state">
+            <div style="font-size:3rem;opacity:.35;">&#9733;</div>
+            <h3>No reviews found</h3>
+            <p>Customer reviews will appear here once they are submitted.</p>
+        </div>
+    </div>
+}
+else
+{
+    @foreach (var review in Model.Items)
+    {
+        <div class="panel mb-3">
+            <div class="panel-body">
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                    <div>
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <strong style="color:var(--wood-900);">@review.AuthorName</strong>
+
+                            @if (review.IsVerifiedPurchase)
+                            {
+                                <span class="badge-verified">Verified Purchase</span>
+                            }
+
+                            @switch (review.Status)
+                            {
+                                case ReviewStatus.Pending:
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                    break;
+                                case ReviewStatus.Approved:
+                                    <span class="badge bg-success">Approved</span>
+                                    break;
+                                case ReviewStatus.Rejected:
+                                    <span class="badge bg-danger">Rejected</span>
+                                    break;
+                            }
+                        </div>
+
+                        <div class="small text-muted-wood mt-1">
+                            on
+                            <a asp-controller="Products" asp-action="Edit" asp-route-id="@review.ProductId">
+                                @(review.Product?.Name ?? "Deleted product")
+                            </a>
+                            &middot; @review.CreatedDate.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt")
+                        </div>
+                    </div>
+
+                    <partial name="_StarRating" model="(decimal)review.Rating"
+                             view-data='new ViewDataDictionary(ViewData) { { "ShowCount", false }, { "ShowValue", false }, { "Size", "1rem" } }' />
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(review.Title))
+                {
+                    <div class="fw-bold mb-1">@review.Title</div>
+                }
+
+                <p class="mb-3" style="white-space:pre-line;font-size:.94rem;line-height:1.65;">@review.Comment</p>
+
+                <form asp-action="UpdateStatus" asp-route-id="@review.ReviewId" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+
+                    <div class="mb-2">
+                        <label class="form-label small" for="response-@review.ReviewId">
+                            Public response (optional)
+                        </label>
+                        <textarea id="response-@review.ReviewId" name="adminResponse" rows="2"
+                                  class="form-control form-control-sm" maxlength="500"
+                                  placeholder="Reply publicly under this review">@review.AdminResponse</textarea>
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2">
+                        @if (review.Status != ReviewStatus.Approved)
+                        {
+                            <button type="submit" name="status" value="@ReviewStatus.Approved"
+                                    class="btn btn-sm btn-wood" data-busy-text="Approving...">
+                                Approve
+                            </button>
+                        }
+
+                        @if (review.Status != ReviewStatus.Rejected)
+                        {
+                            <button type="submit" name="status" value="@ReviewStatus.Rejected"
+                                    class="btn btn-sm btn-outline-danger" data-busy-text="Rejecting...">
+                                Reject
+                            </button>
+                        }
+
+                        @if (review.Status == ReviewStatus.Approved)
+                        {
+                            <button type="submit" name="status" value="@ReviewStatus.Approved"
+                                    class="btn btn-sm btn-outline-wood" data-busy-text="Saving...">
+                                Save Response
+                            </button>
+                        }
+
+                        <span class="ms-auto small text-muted-wood align-self-center">
+                            @review.HelpfulCount found helpful
+                        </span>
+                    </div>
+                </form>
+
+                <form asp-action="Delete" asp-route-id="@review.ReviewId" method="post" class="mt-2"
+                      data-confirm="This review will be permanently deleted. Continue?"
+                      data-confirm-title="Delete review">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-link text-danger p-0"
+                            style="font-size:.82rem;">Delete permanently</button>
+                </form>
+            </div>
+        </div>
+    }
+
+    @if (Model.TotalPages > 1)
+    {
+        <nav>
+            <ul class="pagination justify-content-center">
+                @for (var i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.Page ? "active" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@i"
+                           asp-route-status="@Model.Status" asp-route-search="@Model.Search">@i</a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
+}

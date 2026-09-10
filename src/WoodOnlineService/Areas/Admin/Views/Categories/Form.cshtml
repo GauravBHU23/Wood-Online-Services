@@ -1,0 +1,92 @@
+@model WoodOnlineService.Areas.Admin.ViewModels.CategoryFormViewModel
+@{
+    var isEdit = Model.CategoryId > 0;
+    ViewData["Title"] = isEdit ? $"Edit — {Model.Name}" : "New Category";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <h1 class="mb-0">@(isEdit ? "Edit Category" : "New category")</h1>
+    <a asp-action="Index" class="btn btn-outline-wood">← All categories</a>
+</div>
+
+<form asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.CategoryId" method="post" enctype="multipart/form-data">
+    @Html.AntiForgeryToken()
+    <input asp-for="CategoryId" type="hidden" />
+    <input asp-for="ImageUrl" type="hidden" />
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="panel">
+                <div class="panel-header">Category Details</div>
+                <div class="panel-body">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label"></label> <span class="text-danger">*</span>
+                        <input asp-for="Name" class="form-control" placeholder="e.g. Dining" />
+                        <span asp-validation-for="Name" class="field-validation-error"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label"></label>
+                        <textarea asp-for="Description" rows="3" class="form-control"
+                                  placeholder="A short line describing what this category contains."></textarea>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="DisplayOrder" class="form-label"></label>
+                            <input asp-for="DisplayOrder" class="form-control" type="number" min="0" />
+                            <span class="small text-muted-wood">Lower numbers appear first.</span>
+                        </div>
+
+                        <div class="col-md-6 d-flex align-items-center">
+                            <div class="form-check mt-3">
+                                <input asp-for="IsActive" class="form-check-input" />
+                                <label asp-for="IsActive" class="form-check-label"></label>
+                                <div class="small text-muted-wood">An inactive category is hidden from the site.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (isEdit && Model.ProductCount > 0)
+                    {
+                        <div class="alert alert-info py-2 small mt-3 mb-0">
+                            This category has <strong>@Model.ProductCount</strong> products.
+                            It cannot be deleted while they exist. Set it inactive instead to hide it.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="panel mb-3">
+                <div class="panel-header">Category image</div>
+                <div class="panel-body">
+                    @if (!string.IsNullOrWhiteSpace(Model.ImageUrl))
+                    {
+                        <img src="@Model.ImageUrl" alt="" class="img-fluid rounded mb-2"
+                             style="border:1px solid var(--line);max-height:160px;" />
+                    }
+                    <input asp-for="Image" type="file" class="form-control" accept="image/*" />
+                    <span asp-validation-for="Image" class="field-validation-error"></span>
+                    <div class="small text-muted-wood mt-1">A square image works best.</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-body d-grid gap-2">
+                    <button type="submit" class="btn btn-wood btn-lg">
+                        @(isEdit ? "Save Changes" : "Add Category")
+                    </button>
+                    <a asp-action="Index" class="btn btn-outline-wood">Cancel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

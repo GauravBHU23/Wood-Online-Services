@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>You are offline — Wood Online Service</title>
+    <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+    <style>
+        :root {
+            --wood-500: #a9713f;
+            --wood-700: #6d4423;
+            --wood-900: #3f2817;
+            --cream: #fdfaf4;
+            --line: #e3d7c4;
+            --ink-soft: #6b5b4c;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 1.5rem;
+            background: var(--cream);
+            color: #2c2119;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.65;
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            box-shadow: 0 12px 34px rgba(63, 40, 23, .12);
+            padding: 2.5rem 2rem;
+            max-width: 460px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .logo { width: 220px; max-width: 100%; margin-bottom: 1.5rem; }
+
+        h1 {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 1.55rem;
+            color: var(--wood-900);
+            margin: 0 0 .75rem;
+        }
+
+        p { color: var(--ink-soft); margin: 0 0 1rem; font-size: .96rem; }
+
+        .btn {
+            display: inline-block;
+            background: linear-gradient(180deg, var(--wood-500), var(--wood-700));
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: .7rem 1.7rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            margin-top: .5rem;
+        }
+
+        .btn:hover { filter: brightness(1.08); }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            font-size: .85rem;
+            color: var(--ink-soft);
+            margin-top: 1.5rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid var(--line);
+            width: 100%;
+            justify-content: center;
+        }
+
+        .dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #b3261e;
+        }
+
+        .dot.online { background: #2f7d4f; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <img src="/img/logo.svg" alt="Wood Online Service" class="logo">
+
+        <h1>You are offline</h1>
+        <p>
+            We could not reach our servers. Check your internet connection
+            and try again — pages you have already visited will still open.
+        </p>
+
+        <a href="/" class="btn" id="retryBtn">Try Again</a>
+
+        <div class="status">
+            <span class="dot" id="statusDot"></span>
+            <span id="statusText">No connection</span>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var dot = document.getElementById('statusDot');
+            var text = document.getElementById('statusText');
+            var retry = document.getElementById('retryBtn');
+
+            function sync() {
+                var online = navigator.onLine;
+                dot.classList.toggle('online', online);
+                text.textContent = online ? 'Connection restored' : 'No connection';
+
+                // Send the visitor back to the site as soon as the network returns.
+                if (online) setTimeout(function () { window.location.href = '/'; }, 1200);
+            }
+
+            window.addEventListener('online', sync);
+            window.addEventListener('offline', sync);
+
+            retry.addEventListener('click', function (e) {
+                if (!navigator.onLine) {
+                    e.preventDefault();
+                    text.textContent = 'Still offline — please check your connection';
+                }
+            });
+
+            sync();
+        })();
+    </script>
+</body>
+</html>

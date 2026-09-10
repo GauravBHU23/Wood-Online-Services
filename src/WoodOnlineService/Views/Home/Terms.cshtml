@@ -1,0 +1,114 @@
+@using Microsoft.Extensions.Options
+@inject IOptions<SiteSettings> Site
+@{
+    var site = Site.Value;
+    ViewData["Title"] = "Terms & Conditions";
+}
+
+<div class="bg-wood-50 border-bottom border-wood py-4">
+    <div class="container">
+        <h1 class="mb-1">Terms &amp; Conditions</h1>
+        <p class="text-muted-wood mb-0">Last updated @DateTime.Now.ToString("dd MMMM yyyy")</p>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="panel">
+                <div class="panel-body">
+                    <p>
+                        By using this website and placing an order, you agree to the terms below.
+                    </p>
+
+                    <h2 style="font-size:1.15rem;" class="mt-4">Products</h2>
+                    <p>
+                        All our furniture is made from solid wood. Because wood is a natural material,
+                        the grain, colour and figure of the item you receive will differ slightly from
+                        the photographs. This is normal and is not a defect.
+                    </p>
+                    <p>
+                        Dimensions listed are approximate and may vary by up to half an inch on
+                        handmade pieces.
+                    </p>
+
+                    <h2 style="font-size:1.15rem;" class="mt-4">Pricing</h2>
+                    <p>
+                        Prices are in Indian Rupees and include applicable taxes unless stated otherwise.
+                        We may change prices at any time, but a change never affects an order that has
+                        already been confirmed.
+                    </p>
+                    <p>
+                        Custom-order items are quoted individually. The quoted price is valid for
+                        30 days from the date of the quotation.
+                    </p>
+
+                    <h2 style="font-size:1.15rem;" class="mt-4">Orders</h2>
+                    <ul>
+                        <li>Placing an order is an offer to buy; the order is confirmed once we accept it.</li>
+                        <li>We may decline an order if the item is out of stock or the address is outside our delivery area.</li>
+                        <li>We will call you to confirm large orders before dispatch.</li>
+                    </ul>
+
+                    <h2 style="font-size:1.15rem;" class="mt-4">Payment</h2>
+                    <p>
+                        We accept Cash on Delivery and online payment via UPI, credit card, debit card,
+                        net banking and wallets. Online payments are processed by our payment partner.
+                        Your order is confirmed once payment is received, or immediately in the case of
+                        Cash on Delivery.
+                    </p>
+
+                    <h2 style="font-size:1.15rem;" class="mt-4">Delivery</h2>
+                    <ul>
+                        <li>
+                            Delivery is free on orders of &#8377;@site.FreeShippingAbove.ToString("N0")
+                            and above; otherwise a charge of &#8377;@site.ShippingCharge.ToString("N0") applies.
+                        </li>
+                        <li>Ready-stock items usually ship within 3 to 7 working days.</li>
+                        <li>Custom-made items take longer; we agree the timeline with you before starting.</li>
+                        <li>Someone must be available at the address to receive and inspect the delivery.</li>
+                    </ul>
+
+                    <h2 style="font-size:1.15rem;" class="mt-4">Cancellation</h2>
+                    <p>
+                        You can cancel an order from your account until it has been dispatched.
+                        Once dispatched, please contact us directly. Custom-made items cannot be
+                        cancelled once work has begun, because they cannot be resold.
+                    </p>
+
+                    <h2 style="font-size:1.15rem;" class="mt-4">Returns and Damage</h2>
+                    <p>
+                        Please inspect your furniture at the time of delivery. Report any transit damage
+                        within 48 hours with photographs and we will repair or replace the item.
+                        Custom-made items are not returnable except where they are defective.
+                    </p>
+
+                    <h2 style="font-size:1.15rem;" class="mt-4">Care and Warranty</h2>
+                    <p>
+                        Solid wood should be kept away from direct sunlight, standing water and
+                        prolonged damp. We warrant our joinery and workmanship for 12 months from
+                        delivery. The warranty does not cover normal wear, misuse, or damage caused by
+                        moisture or improper handling.
+                    </p>
+
+                    <h2 style="font-size:1.15rem;" class="mt-4">Reviews</h2>
+                    <p>
+                        Reviews you post are published with your name. Please keep them honest and
+                        relevant. We may remove reviews that contain abuse, personal information,
+                        or content unrelated to the product.
+                    </p>
+
+                    <h2 style="font-size:1.15rem;" class="mt-4">Contact</h2>
+                    <p class="mb-0">
+                        @site.ShopName<br />
+                        @site.AddressLine1<br />
+                        @site.AddressLine2<br />
+                        Phone: <a href="tel:@site.Phone.Replace(" ", "")">@site.Phone</a><br />
+                        Email: <a href="mailto:@site.Email">@site.Email</a><br />
+                        Hours: @site.WorkingHours
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

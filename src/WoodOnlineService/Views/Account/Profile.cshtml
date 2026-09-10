@@ -1,0 +1,103 @@
+@model WoodOnlineService.ViewModels.ProfileViewModel
+@{
+    ViewData["Title"] = "My Profile";
+}
+
+<div class="container py-5">
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="panel">
+                <div class="panel-header">My Details</div>
+                <div class="panel-body">
+                    <p class="small text-muted-wood">
+                        This address is filled in automatically at checkout, so you do not have to type it every time.
+                    </p>
+
+                    <form asp-action="Profile" method="post" novalidate data-validate-on-submit>
+                        @Html.AntiForgeryToken()
+
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small"></div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label asp-for="FullName" class="form-label"></label>
+                                <input asp-for="FullName" class="form-control" maxlength="100"
+                                       data-validate="required|min:2" data-label="Full name" />
+                                <span asp-validation-for="FullName" class="field-validation-error"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="Email" class="form-label"></label>
+                                <input asp-for="Email" class="form-control" readonly disabled />
+                                <span class="small text-muted-wood">Contact us if you need to change your email address.</span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="PhoneNumber" class="form-label"></label>
+                                <input asp-for="PhoneNumber" class="form-control" type="tel" maxlength="20"
+                                       data-validate="required|phone" data-label="Phone number" />
+                                <span asp-validation-for="PhoneNumber" class="field-validation-error"></span>
+                            </div>
+
+                            <div class="col-12">
+                                <label asp-for="Address" class="form-label"></label>
+                                <textarea asp-for="Address" rows="2" class="form-control" placeholder="House or flat number, street, area"></textarea>
+                                <span asp-validation-for="Address" class="field-validation-error"></span>
+                            </div>
+
+                            <div class="col-md-5">
+                                <label asp-for="City" class="form-label"></label>
+                                <input asp-for="City" class="form-control" />
+                                <span asp-validation-for="City" class="field-validation-error"></span>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label asp-for="State" class="form-label"></label>
+                                <input asp-for="State" class="form-control" />
+                                <span asp-validation-for="State" class="field-validation-error"></span>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label asp-for="PinCode" class="form-label"></label>
+                                <input asp-for="PinCode" class="form-control" inputmode="numeric" maxlength="6"
+                                       data-validate="pincode" />
+                                <span asp-validation-for="PinCode" class="field-validation-error"></span>
+                            </div>
+
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-wood" data-busy-text="Saving...">
+                                    Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="panel mb-3">
+                <div class="panel-header">Shortcuts</div>
+                <div class="panel-body d-grid gap-2">
+                    <a asp-controller="Orders" asp-action="Index" class="btn btn-outline-wood">📦 My Orders</a>
+                    <a asp-controller="Cart" asp-action="Index" class="btn btn-outline-wood">🛒 Your Cart</a>
+                    <a asp-action="ChangePassword" class="btn btn-outline-wood">🔒 Change Password</a>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">Need Help?</div>
+                <div class="panel-body">
+                    <p class="small text-muted-wood mb-3">
+                        If you have any question about an order or a product, talk to us directly.
+                    </p>
+                    <a asp-controller="Home" asp-action="Contact" class="btn btn-wood btn-sm w-100">Contact Us</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

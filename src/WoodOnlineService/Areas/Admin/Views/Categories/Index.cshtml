@@ -1,0 +1,80 @@
+@model List<WoodOnlineService.Models.Category>
+@{
+    ViewData["Title"] = "Categories";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="mb-1">Categories</h1>
+        <p class="text-muted-wood mb-0">@Model.Count categor@(Model.Count == 1 ? "y" : "ies")</p>
+    </div>
+    <a asp-action="Create" class="btn btn-wood">+ New Category</a>
+</div>
+
+<div class="panel">
+    @if (Model.Count == 0)
+    {
+        <div class="empty-state">
+            <div style="font-size:3rem;">📁</div>
+            <h3>No categories yet</h3>
+            <p>Create a category first, then add products to it.</p>
+            <a asp-action="Create" class="btn btn-wood mt-2">+ New Category</a>
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table table-wood mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:60px;"></th>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th class="text-center">Products</th>
+                        <th class="text-center">Order</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model)
+                    {
+                        <tr>
+                            <td>
+                                <img src="@(c.ImageUrl ?? "/img/cat-custom.svg")" alt=""
+                                     style="width:44px;height:44px;object-fit:cover;border-radius:8px;" />
+                            </td>
+                            <td class="fw-bold">@c.Name</td>
+                            <td class="small text-muted-wood" style="max-width:320px;">@c.Description</td>
+                            <td class="text-center">
+                                <a asp-controller="Products" asp-action="Index" asp-route-categoryId="@c.CategoryId"
+                                   class="badge badge-soft text-decoration-none">@c.Products.Count</a>
+                            </td>
+                            <td class="text-center">@c.DisplayOrder</td>
+                            <td class="text-center">
+                                @if (c.IsActive)
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inactive</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <a asp-action="Edit" asp-route-id="@c.CategoryId" class="btn btn-sm btn-outline-wood">Edit</a>
+                                    <form asp-action="Delete" asp-route-id="@c.CategoryId" method="post"
+                                          onsubmit="return confirm('&quot;@c.Name&quot; Delete this?');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">✕</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

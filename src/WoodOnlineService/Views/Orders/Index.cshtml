@@ -1,0 +1,66 @@
+@using WoodOnlineService.Models
+@model List<WoodOnlineService.Models.Order>
+@{
+    ViewData["Title"] = "My Orders";
+}
+
+<div class="bg-wood-50 border-bottom border-wood py-4">
+    <div class="container">
+        <h1 class="mb-1">My Orders</h1>
+        <p class="text-muted-wood mb-0">@Model.Count order@(Model.Count == 1 ? "" : "s")</p>
+    </div>
+</div>
+
+<div class="container py-4">
+    @if (Model.Count == 0)
+    {
+        <div class="panel">
+            <div class="empty-state">
+                <div style="font-size:3.5rem;">📦</div>
+                <h3>No orders yet</h3>
+                <p>Once you place an order it will appear here, along with its status.</p>
+                <a asp-controller="Shop" asp-action="Index" class="btn btn-wood mt-2">Browse Products</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="panel">
+            <div class="table-wrap">
+                <table class="table table-wood mb-0">
+                    <thead>
+                        <tr>
+                            <th>Order Number</th>
+                            <th>Date</th>
+                            <th class="text-center">Items</th>
+                            <th class="text-end">Total</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Payment</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var o in Model)
+                        {
+                            <tr>
+                                <td class="fw-bold">@o.OrderNumber</td>
+                                <td class="small">@o.OrderDate.ToLocalTime().ToString("dd MMM yyyy")</td>
+                                <td class="text-center">@o.Items.Sum(i => i.Quantity)</td>
+                                <td class="text-end fw-bold">₹@o.TotalAmount.ToString("N0")</td>
+                                <td class="text-center">
+                                    <partial name="_OrderStatusBadge" model="o.OrderStatus" />
+                                </td>
+                                <td class="text-center small">
+                                    @(o.PaymentMethod == PaymentMethod.CashOnDelivery ? "COD" : "Online")
+                                </td>
+                                <td class="text-end">
+                                    <a asp-action="Details" asp-route-id="@o.OrderId" class="btn btn-sm btn-outline-wood">View</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>

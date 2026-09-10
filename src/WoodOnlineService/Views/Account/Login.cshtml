@@ -1,0 +1,67 @@
+@model WoodOnlineService.ViewModels.LoginViewModel
+@{
+    ViewData["Title"] = "Login";
+    var returnUrl = ViewData["ReturnUrl"] as string;
+}
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-6 col-lg-5 mx-auto">
+            <div class="panel">
+                <div class="panel-header text-center">Sign In</div>
+                <div class="panel-body">
+                    <form asp-action="Login" asp-route-returnUrl="@returnUrl" method="post"
+                          novalidate data-validate-on-submit>
+                        @Html.AntiForgeryToken()
+
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="Email" class="form-label">Email</label>
+                            <input asp-for="Email" class="form-control" type="email" autocomplete="username"
+                                   placeholder="you@example.com"
+                                   data-validate="required|email" data-label="Email address" />
+                            <span asp-validation-for="Email" class="field-validation-error"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Password" class="form-label">Password</label>
+                            <input asp-for="Password" class="form-control" type="password" autocomplete="current-password"
+                                   data-validate="required" data-label="Password" />
+                            <span asp-validation-for="Password" class="field-validation-error"></span>
+                        </div>
+
+                        <div class="d-flex justify-content-end mb-2">
+                            <a asp-action="ForgotPassword" class="small">Forgot password?</a>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input asp-for="RememberMe" class="form-check-input" />
+                            <label asp-for="RememberMe" class="form-check-label"></label>
+                        </div>
+
+                        <button type="submit" class="btn btn-wood w-100 btn-lg" data-busy-text="Signing in...">
+                            Sign In
+                        </button>
+                    </form>
+
+                    <hr class="my-4" />
+
+                    <p class="text-center mb-0 small">
+                        Do not have an account?
+                        <a asp-action="Register" asp-route-returnUrl="@returnUrl" class="fw-bold">Create an account</a>
+                    </p>
+                </div>
+            </div>
+
+            <p class="text-center small text-muted-wood mt-3">
+                You can browse products and send inquiries without an account.
+                An account is only needed to place an order.
+            </p>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,96 @@
+@model WoodOnlineService.Models.Product
+
+<div class="card-wood d-flex flex-column h-100">
+    <a asp-controller="Shop" asp-action="Details" asp-route-id="@Model.ProductId"
+       class="position-relative d-block" aria-label="@Model.Name">
+        <img src="@(Model.ImageUrl ?? "/img/cat-custom.svg")" alt="@Model.Name"
+             class="product-thumb" loading="lazy" decoding="async" width="400" height="300" />
+
+        <div class="position-absolute top-0 start-0 m-2 d-flex flex-column gap-1 align-items-start">
+            @if (Model.IsCustomOrder)
+            {
+                <span class="badge badge-custom">Custom Order</span>
+            }
+            else if (Model.DiscountPercent > 0)
+            {
+                <span class="badge badge-discount">@Model.DiscountPercent% OFF</span>
+            }
+            @if (Model.IsFeatured)
+            {
+                <span class="badge badge-wood">Featured</span>
+            }
+        </div>
+
+        @if (!Model.IsCustomOrder && !Model.InStock)
+        {
+            <span class="badge bg-secondary position-absolute top-0 end-0 m-2">Out of Stock</span>
+        }
+    </a>
+
+    <div class="p-3 d-flex flex-column flex-grow-1">
+        @if (!string.IsNullOrWhiteSpace(Model.WoodType))
+        {
+            <span class="wood-chip mb-2 align-self-start">@Model.WoodType</span>
+        }
+
+        <h3 class="product-title">
+            <a asp-controller="Shop" asp-action="Details" asp-route-id="@Model.ProductId"
+               class="text-decoration-none" style="color:inherit;">
+                @Model.Name
+            </a>
+        </h3>
+
+        @if (Model.ReviewCount > 0)
+        {
+            <div class="mb-2">
+                <partial name="_StarRating" model="Model.AverageRating"
+                         view-data='new ViewDataDictionary(ViewData) { { "Count", Model.ReviewCount }, { "Size", ".85rem" }, { "ShowValue", true } }' />
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.Dimensions))
+        {
+            <div class="small text-muted-wood mb-2">@Model.Dimensions</div>
+        }
+
+        <div class="mt-auto pt-2">
+            @if (Model.IsCustomOrder)
+            {
+                <div class="mb-2">
+                    <span class="price" style="font-size:1rem;">Price on request</span>
+                </div>
+                <a asp-controller="Home" asp-action="Contact" asp-route-productId="@Model.ProductId"
+                   class="btn btn-outline-wood btn-sm w-100">Request a Quote</a>
+            }
+            else
+            {
+                <div class="mb-2">
+                    <span class="price">&#8377;@Model.Price.ToString("N0")</span>
+                    @if (Model.OldPrice is > 0 && Model.OldPrice > Model.Price)
+                    {
+                        <span class="price-old">&#8377;@Model.OldPrice.Value.ToString("N0")</span>
+                    }
+                </div>
+
+                @if (Model.InStock)
+                {
+                    @* data-no-guard: this form has its own AJAX handler that manages the button. *@
+                    <form asp-controller="Cart" asp-action="Add" method="post"
+                          class="d-grid js-add-to-cart" data-no-guard>
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="productId" value="@Model.ProductId" />
+                        <input type="hidden" name="quantity" value="1" />
+                        <button type="submit" class="btn btn-wood btn-sm" data-busy-text="Adding...">
+                            Add to Cart
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <a asp-controller="Home" asp-action="Contact" asp-route-productId="@Model.ProductId"
+                       class="btn btn-outline-wood btn-sm w-100">Ask About Availability</a>
+                }
+            }
+        </div>
+    </div>
+</div>

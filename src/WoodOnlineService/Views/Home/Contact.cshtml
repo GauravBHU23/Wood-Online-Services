@@ -1,0 +1,132 @@
+@using Microsoft.Extensions.Options
+@using WoodOnlineService.Models
+@model WoodOnlineService.ViewModels.InquiryFormModel
+@inject IOptions<SiteSettings> Site
+@{
+    var site = Site.Value;
+    ViewData["Title"] = "Contact Us";
+}
+
+<div class="bg-wood-50 border-bottom border-wood py-4">
+    <div class="container">
+        <h1 class="mb-1">Get in Touch</h1>
+        <p class="text-muted-wood mb-0">Any question about a product, a price or custom work, just ask.</p>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="panel">
+                <div class="panel-header">
+                    Send Inquiry
+                    @if (ViewBag.ProductName is string pn)
+                    {
+                        <span class="badge badge-soft ms-2">@pn</span>
+                    }
+                </div>
+                <div class="panel-body">
+                    <form asp-action="Contact" method="post" novalidate data-validate-on-submit>
+                        @Html.AntiForgeryToken()
+                        <input asp-for="ProductId" type="hidden" />
+
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small d-none"></div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label asp-for="Name" class="form-label"></label> <span class="text-danger">*</span>
+                                <input asp-for="Name" class="form-control" placeholder="Your full name"
+                                       maxlength="100" data-validate="required|min:2" data-label="Your name" />
+                                <span asp-validation-for="Name" class="field-validation-error"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="Phone" class="form-label"></label> <span class="text-danger">*</span>
+                                <input asp-for="Phone" class="form-control" type="tel" placeholder="98765 43210"
+                                       maxlength="20" data-validate="required|phone" data-label="Phone number" />
+                                <span asp-validation-for="Phone" class="field-validation-error"></span>
+                            </div>
+
+                            <div class="col-12">
+                                <label asp-for="Email" class="form-label"></label>
+                                <input asp-for="Email" class="form-control" type="email" placeholder="you@example.com"
+                                       maxlength="150" data-validate="email" />
+                                <span asp-validation-for="Email" class="field-validation-error"></span>
+                            </div>
+
+                            <div class="col-12">
+                                <label asp-for="Message" class="form-label"></label> <span class="text-danger">*</span>
+                                <textarea asp-for="Message" rows="5" class="form-control" maxlength="2000"
+                                          placeholder="What you need, the measurements, and by when. Tell us whatever you can."
+                                          data-validate="required|min:10" data-label="Your message"
+                                          data-counter="contactCounter"></textarea>
+                                <div class="char-counter" id="contactCounter">0 / 2000</div>
+                                <span asp-validation-for="Message" class="field-validation-error"></span>
+                            </div>
+
+                            <div class="col-12 d-flex flex-wrap align-items-center gap-2">
+                                <button type="submit" class="btn btn-wood btn-lg" data-busy-text="Sending...">
+                                    Send Message
+                                </button>
+                                <a href="https://wa.me/@site.WhatsAppNumber" target="_blank" rel="noopener" class="btn btn-whatsapp btn-lg">
+                                    Send via WhatsApp
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="panel mb-3">
+                <div class="panel-header">Shop Address</div>
+                <div class="panel-body">
+                    <p class="mb-3">
+                        📍 <strong>@site.ShopName</strong><br />
+                        <span class="ms-4">@site.AddressLine1</span><br />
+                        <span class="ms-4">@site.AddressLine2</span>
+                    </p>
+                    <p class="mb-2">📞 <a href="tel:@site.Phone.Replace(" ", "")">@site.Phone</a></p>
+                    <p class="mb-2">💬 <a href="https://wa.me/@site.WhatsAppNumber" target="_blank" rel="noopener">Chat on WhatsApp</a></p>
+                    <p class="mb-2">✉️ <a href="mailto:@site.Email">@site.Email</a></p>
+                    <p class="mb-0">🕐 @site.WorkingHours</p>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(site.MapEmbedUrl))
+            {
+                <div class="panel">
+                    <div class="panel-header d-flex justify-content-between align-items-center">
+                        <span>Find Us</span>
+                        <a class="btn btn-sm btn-outline-wood"
+                           href="https://www.google.com/maps/search/?api=1&query=@Uri.EscapeDataString(site.ShopName + ", " + site.AddressLine1 + ", " + site.AddressLine2)"
+                           target="_blank" rel="noopener noreferrer">Open in Maps</a>
+                    </div>
+                    <div class="ratio ratio-4x3">
+                        <iframe src="@site.MapEmbedUrl" style="border:0;width:100%;height:100%;"
+                                allowfullscreen title="Shop location map"
+                                referrerpolicy="origin-when-cross-origin"></iframe>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="panel">
+                    <div class="panel-header">Find Us</div>
+                    <div class="panel-body text-center text-muted-wood py-4">
+                        <div style="font-size:2.5rem;" class="mb-2">🗺️</div>
+                        <p class="small mb-0">
+                            The map is not configured yet. In <code>appsettings.json</code>,
+                            <code>SiteSettings:MapEmbedUrl</code> add the Google Maps embed link.
+                        </p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

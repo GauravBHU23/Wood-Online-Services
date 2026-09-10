@@ -1,0 +1,222 @@
+@model WoodOnlineService.ViewModels.ProductDetailViewModel
+@{
+    var summary = Model.ReviewSummary;
+    var isSignedIn = User.Identity?.IsAuthenticated == true;
+    var existing = Model.UserReview;
+}
+
+<div class="panel" id="reviews">
+    <div class="panel-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span>Customer Reviews</span>
+        @if (summary.TotalReviews > 0)
+        {
+            <partial name="_StarRating" model="summary.AverageRating"
+                     view-data='new ViewDataDictionary(ViewData) { { "Count", summary.TotalReviews }, { "Size", ".95rem" } }' />
+        }
+    </div>
+
+    <div class="panel-body">
+        @if (summary.TotalReviews > 0)
+        {
+            <div class="row g-4 mb-4 pb-4 border-bottom border-wood">
+                <div class="col-md-4 text-center">
+                    <div style="font-size:3rem;font-weight:700;font-family:var(--font-display);color:var(--wood-900);line-height:1;">
+                        @summary.AverageRating.ToString("0.0")
+                    </div>
+                    <div class="my-2">
+                        <partial name="_StarRating" model="summary.AverageRating"
+                                 view-data='new ViewDataDictionary(ViewData) { { "ShowCount", false }, { "ShowValue", false }, { "Size", "1.25rem" } }' />
+                    </div>
+                    <div class="small text-muted-wood">
+                        Based on @summary.TotalReviews @(summary.TotalReviews == 1 ? "review" : "reviews")
+                    </div>
+                </div>
+
+                <div class="col-md-8">
+                    @foreach (var row in summary.Breakdown)
+                    {
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="small text-muted-wood" style="width:52px;">@row.Stars star@(row.Stars == 1 ? "" : "s")</span>
+                            <div class="rating-bar">
+                                <div class="rating-bar__fill" style="width:@row.Percentage.ToString(System.Globalization.CultureInfo.InvariantCulture)%;"></div>
+                            </div>
+                            <span class="small text-muted-wood" style="width:34px;text-align:right;">@row.Count</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Write a review -->
+        @if (isSignedIn)
+        {
+            <div class="mb-4 pb-4 border-bottom border-wood">
+                <h3 style="font-size:1.05rem;" class="mb-3">
+                    @(existing is null ? "Write a Review" : "Edit Your Review")
+                </h3>
+
+                @if (existing is not null && existing.Status == ReviewStatus.Pending)
+                {
+                    <div class="alert alert-warning py-2 small">
+                        Your review is awaiting approval and is not visible to other customers yet.
+                    </div>
+                }
+                else if (existing is not null && existing.Status == ReviewStatus.Rejected)
+                {
+                    <div class="alert alert-danger py-2 small">
+                        Your review was not approved. You may edit it and submit again.
+                    </div>
+                }
+
+                <form id="reviewForm" novalidate>
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" id="reviewProductId" value="@Model.Product.ProductId" />
+
+                    <div class="mb-3">
+                        <label class="form-label d-block">Your Rating <span class="text-danger">*</span></label>
+                        <div class="star-picker" id="starPicker" role="radiogroup" aria-label="Select a rating">
+                            @for (var i = 1; i <= 5; i++)
+                            {
+                                <button type="button" data-value="@i" role="radio"
+                                        aria-checked="@((existing?.Rating ?? 0) == i ? "true" : "false")"
+                                        aria-label="@i star@(i == 1 ? "" : "s")">&#9733;</button>
+                            }
+                        </div>
+                        <input type="hidden" id="reviewRating" value="@(existing?.Rating ?? 0)" />
+                        <span class="field-error d-none" id="ratingError">Please select a rating.</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="reviewTitle">Title (optional)</label>
+                        <input type="text" id="reviewTitle" class="form-control" maxlength="150"
+                               placeholder="Sum up your experience in a few words"
+                               value="@existing?.Title" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="reviewComment">Your Review <span class="text-danger">*</span></label>
+                        <textarea id="reviewComment" class="form-control" rows="4" maxlength="2000"
+                                  placeholder="How is the quality, the finish, the delivery? What would you tell another customer?"
+                                  data-counter="reviewCounter">@existing?.Comment</textarea>
+                        <div class="char-counter" id="reviewCounter">0 / 2000</div>
+                        <span class="field-error d-none" id="commentError">
+                            Your review must be at least 10 characters.
+                        </span>
+                    </div>
+
+                    <button type="submit" class="btn btn-wood" data-busy-text="Submitting...">
+                        @(existing is null ? "Submit Review" : "Update Review")
+                    </button>
+
+                    @if (Model.UserHasPurchased)
+                    {
+                        <span class="badge-verified ms-2">Verified Purchase</span>
+                    }
+                </form>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info d-flex flex-wrap align-items-center justify-content-between gap-2 py-2">
+                <span class="small mb-0">Sign in to share your experience with this product.</span>
+                <a asp-controller="Account" asp-action="Login"
+                   asp-route-returnUrl="@($"/Shop/Details/{Model.Product.ProductId}#reviews")"
+                   class="btn btn-wood btn-sm">Sign In</a>
+            </div>
+        }
+
+        <!-- Review list -->
+        <div id="reviewList">
+            @if (Model.Reviews.Count == 0)
+            {
+                <div class="empty-state py-4">
+                    <div style="font-size:2.5rem;opacity:.35;">&#9733;</div>
+                    <p class="mb-0 small">No reviews yet. Be the first to review this product.</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var review in Model.Reviews)
+                {
+                    var initial = string.IsNullOrWhiteSpace(review.AuthorName)
+                        ? "C"
+                        : review.AuthorName.Trim()[..1].ToUpperInvariant();
+                    var hasVoted = Model.VotedReviewIds.Contains(review.ReviewId);
+
+                    <div class="review-item">
+                        <div class="d-flex gap-3">
+                            <div class="review-avatar" aria-hidden="true">@initial</div>
+
+                            <div class="flex-grow-1" style="min-width:0;">
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                    <strong style="font-size:.94rem;color:var(--wood-900);">@review.AuthorName</strong>
+                                    @if (review.IsVerifiedPurchase)
+                                    {
+                                        <span class="badge-verified">Verified Purchase</span>
+                                    }
+                                    <span class="small text-muted-wood ms-auto">
+                                        @review.CreatedDate.ToLocalTime().ToString("dd MMM yyyy")
+                                    </span>
+                                </div>
+
+                                <div class="mb-2">
+                                    <partial name="_StarRating" model="(decimal)review.Rating"
+                                             view-data='new ViewDataDictionary(ViewData) { { "ShowCount", false }, { "ShowValue", false }, { "Size", ".85rem" } }' />
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(review.Title))
+                                {
+                                    <div class="fw-bold mb-1" style="font-size:.95rem;">@review.Title</div>
+                                }
+
+                                <p class="mb-2" style="font-size:.92rem;line-height:1.65;white-space:pre-line;">@review.Comment</p>
+
+                                @if (!string.IsNullOrWhiteSpace(review.AdminResponse))
+                                {
+                                    <div class="bg-wood-50 border-start border-3 rounded p-2 mb-2"
+                                         style="border-color:var(--wood-500) !important;">
+                                        <div class="small fw-bold text-wood mb-1">Response from the shop</div>
+                                        <div class="small mb-0">@review.AdminResponse</div>
+                                    </div>
+                                }
+
+                                @if (isSignedIn)
+                                {
+                                    <button type="button"
+                                            class="helpful-btn js-helpful @(hasVoted ? "is-voted" : "")"
+                                            data-review-id="@review.ReviewId">
+                                        Helpful <span class="js-helpful-count">(@review.HelpfulCount)</span>
+                                    </button>
+                                }
+                                else if (review.HelpfulCount > 0)
+                                {
+                                    <span class="small text-muted-wood">
+                                        @review.HelpfulCount found this helpful
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                @if (Model.ReviewTotalPages > 1)
+                {
+                    <nav class="mt-3" aria-label="Review pages">
+                        <ul class="pagination pagination-sm justify-content-center mb-0">
+                            @for (var i = 1; i <= Model.ReviewTotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.ReviewPage ? "active" : "")">
+                                    <a class="page-link"
+                                       asp-controller="Shop" asp-action="Details"
+                                       asp-route-id="@Model.Product.ProductId"
+                                       asp-route-reviewPage="@i"
+                                       asp-fragment="reviews">@i</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
+            }
+        </div>
+    </div>
+</div>

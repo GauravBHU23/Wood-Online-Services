@@ -1,0 +1,84 @@
+@model WoodOnlineService.Models.PaymentTransaction
+@{
+    ViewData["Title"] = "Complete Payment";
+    var order = (Order)ViewBag.Order;
+}
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-6 mx-auto">
+
+            <div class="alert alert-warning d-flex align-items-start gap-2 mb-4">
+                <span style="font-size:1.15rem;line-height:1;">&#9888;</span>
+                <div class="small">
+                    <strong>Test payment page.</strong>
+                    This is a local stand-in for the payment gateway, used because a real gateway
+                    cannot reach a development machine. <strong>No money will be charged.</strong>
+                    Choose an outcome below to continue.
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header d-flex justify-content-between align-items-center">
+                    <span>Complete Your Payment</span>
+                    <span class="badge badge-soft">Test Mode</span>
+                </div>
+
+                <div class="panel-body">
+                    <div class="text-center mb-4 pb-4 border-bottom border-wood">
+                        <div class="small text-muted-wood">Amount payable</div>
+                        <div style="font-size:2.4rem;font-weight:700;font-family:var(--font-display);color:var(--wood-900);line-height:1.1;">
+                            &#8377;@Model.Amount.ToString("N0")
+                        </div>
+                        <div class="small text-muted-wood mt-1">
+                            Order @order.OrderNumber
+                        </div>
+                    </div>
+
+                    <form asp-action="SimulatedGateway" method="post" data-no-guard>
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="requestId" value="@Model.PaymentRequestId" />
+
+                        <label class="form-label">Payment method</label>
+                        <div class="row g-2 mb-4">
+                            @{
+                                var methods = new[] { "UPI", "Credit Card", "Debit Card", "Net Banking", "Wallet" };
+                            }
+                            @for (var i = 0; i < methods.Length; i++)
+                            {
+                                <div class="col-6 col-sm-4">
+                                    <input type="radio" class="btn-check" name="method" id="m-@i"
+                                           value="@methods[i]" checked="@(i == 0)" />
+                                    <label class="btn btn-outline-wood btn-sm w-100" for="m-@i">@methods[i]</label>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" name="outcome" value="success"
+                                    class="btn btn-wood btn-lg" data-busy-text="Processing payment...">
+                                Pay &#8377;@Model.Amount.ToString("N0")
+                            </button>
+
+                            <button type="submit" name="outcome" value="failure"
+                                    class="btn btn-outline-danger" data-busy-text="Cancelling...">
+                                Simulate a failed payment
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="secure-note justify-content-center mt-3">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z" />
+                        </svg>
+                        <span>On the live site this step happens on the gateway's own secure page.</span>
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-center small text-muted-wood mt-3 mb-0">
+                Cancelling leaves the order saved and unpaid, so you can retry from your orders page.
+            </p>
+        </div>
+    </div>
+</div>

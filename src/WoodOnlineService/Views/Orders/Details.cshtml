@@ -1,0 +1,223 @@
+@using Microsoft.Extensions.Options
+@using WoodOnlineService.Models
+@model WoodOnlineService.Models.Order
+@inject IOptions<SiteSettings> Site
+@{
+    ViewData["Title"] = $"Order {Model.OrderNumber}";
+    var site = Site.Value;
+
+    var isCancelled = Model.OrderStatus == OrderStatus.Cancelled;
+    var stage = Model.OrderStatus switch
+    {
+        OrderStatus.Pending => 0,
+        OrderStatus.Confirmed => 1,
+        OrderStatus.Shipped => 2,
+        OrderStatus.Delivered => 3,
+        _ => -1
+    };
+
+    var canCancel = Model.OrderStatus is OrderStatus.Pending or OrderStatus.Confirmed;
+}
+
+<div class="bg-wood-50 border-bottom border-wood py-4">
+    <div class="container d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+            <h1 class="mb-1">Order @Model.OrderNumber</h1>
+            <p class="text-muted-wood mb-0">@Model.OrderDate.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt")</p>
+        </div>
+        <partial name="_OrderStatusBadge" model="Model.OrderStatus" />
+    </div>
+</div>
+
+<div class="container py-4">
+    <!-- Tracker -->
+    <div class="panel mb-4">
+        <div class="panel-body">
+            @if (isCancelled)
+            {
+                <div class="text-center py-3">
+                    <div style="font-size:2.5rem;">❌</div>
+                    <h3 class="mb-1">This order has been cancelled</h3>
+                    <p class="text-muted-wood mb-0 small">
+                        Koi sawaal ho to <a href="tel:@site.Phone.Replace(" ", "")">@site.Phone</a> par baat .
+                    </p>
+                </div>
+            }
+            else
+            {
+                <div class="tracker">
+                    @{
+                        var stages = new[] { "Order Received", "Confirmed", "Shipped", "Delivered" };
+                    }
+                    @for (var i = 0; i < stages.Length; i++)
+                    {
+                        var cls = i < stage ? "done" : i == stage ? "current" : "";
+                        <div class="tracker-step @cls">
+                            <div class="tracker-dot">@(i < stage ? "✓" : (i + 1).ToString())</div>
+                            <div class="tracker-label">@stages[i]</div>
+                        </div>
+                    }
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Model.TrackingNumber))
+                {
+                    <div class="alert alert-info py-2 mb-0 text-center">
+                        📦 Tracking number: <strong>@Model.TrackingNumber</strong>
+                    </div>
+                }
+                else if (Model.OrderStatus == OrderStatus.Pending)
+                {
+                    <p class="text-center small text-muted-wood mb-0">
+                        We will call you shortly to confirm your order.
+                    </p>
+                }
+            }
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="panel">
+                <div class="panel-header">Items</div>
+                <div class="table-wrap">
+                    <table class="table table-wood mb-0">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th class="text-end">Price</th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.Items)
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-controller="Shop" asp-action="Details" asp-route-id="@item.ProductId"
+                                           style="color:var(--wood-900);font-weight:600;">@item.ProductName</a>
+                                    </td>
+                                    <td class="text-end">₹@item.UnitPrice.ToString("N0")</td>
+                                    <td class="text-center">@item.Quantity</td>
+                                    <td class="text-end fw-bold">₹@item.LineTotal.ToString("N0")</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot class="bg-wood-50">
+                            <tr>
+                                <td colspan="3" class="text-end">Subtotal</td>
+                                <td class="text-end">₹@Model.SubTotal.ToString("N0")</td>
+                            </tr>
+                            <tr>
+                                <td colspan="3" class="text-end">Delivery</td>
+                                <td class="text-end">@(Model.ShippingCharge <= 0 ? "Free" : "₹" + Model.ShippingCharge.ToString("N0"))</td>
+                            </tr>
+                            <tr>
+                                <td colspan="3" class="text-end fw-bold">Total</td>
+                                <td class="text-end fw-bold" style="font-size:1.1rem;color:var(--wood-800);">
+                                    ₹@Model.TotalAmount.ToString("N0")
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="panel mb-3">
+                <div class="panel-header">Delivery address</div>
+                <div class="panel-body">
+                    <p class="mb-1"><strong>@Model.ShippingName</strong></p>
+                    <p class="mb-1">📞 @Model.ShippingPhone</p>
+                    <p class="mb-0 small">
+                        @Model.ShippingAddress<br />
+                        @Model.ShippingCity, @Model.ShippingState - @Model.ShippingPinCode
+                    </p>
+                    @if (!string.IsNullOrWhiteSpace(Model.Notes))
+                    {
+                        <hr />
+                        <p class="small mb-0"><strong>Note:</strong> @Model.Notes</p>
+                    }
+                </div>
+            </div>
+
+            <div class="panel mb-3">
+                <div class="panel-header">Payment</div>
+                <div class="panel-body">
+                    <p class="mb-1">
+                        <strong>@(Model.PaymentMethod == PaymentMethod.CashOnDelivery ? "Cash on Delivery" : "Online Payment")</strong>
+                    </p>
+
+                    <p class="mb-2 small text-muted-wood">
+                        Status:
+                        @switch (Model.PaymentStatus)
+                        {
+                            case PaymentStatus.Paid:
+                                <span class="badge bg-success">Paid</span>
+                                break;
+                            case PaymentStatus.Failed:
+                                <span class="badge bg-danger">Not completed</span>
+                                break;
+                            case PaymentStatus.Refunded:
+                                <span class="badge bg-secondary">Refunded</span>
+                                break;
+                            default:
+                                <span class="badge bg-warning text-dark">Pending</span>
+                                break;
+                        }
+
+                        @if (Model.PaymentMethod == PaymentMethod.CashOnDelivery
+                             && Model.PaymentStatus == PaymentStatus.Pending && !isCancelled)
+                        {
+                            <text><br />At the time of delivery, &#8377;@Model.TotalAmount.ToString("N0") is payable.</text>
+                        }
+                    </p>
+
+                    @* The reference is what a customer quotes if they need to query a payment. *@
+                    @if (!string.IsNullOrWhiteSpace(Model.PaymentReference))
+                    {
+                        <div class="bg-wood-50 border border-wood rounded px-2 py-1">
+                            <div class="small text-muted-wood" style="font-size:.75rem;">Transaction reference</div>
+                            <code style="font-size:.82rem;color:var(--wood-900);">@Model.PaymentReference</code>
+                        </div>
+                    }
+
+                    @if (Model.PaymentMethod == PaymentMethod.Online
+                         && Model.PaymentStatus != PaymentStatus.Paid && !isCancelled)
+                    {
+                        <form asp-controller="Checkout" asp-action="RetryPayment" method="post" class="mt-3 d-grid no-print">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="orderId" value="@Model.OrderId" />
+                            <button type="submit" class="btn btn-wood btn-sm" data-busy-text="Opening payment...">
+                                Retry Payment
+                            </button>
+                        </form>
+                        <p class="small text-muted-wood mt-2 mb-0">
+                            No amount has been charged. Your order is held until payment completes.
+                        </p>
+                    }
+                </div>
+            </div>
+
+            <div class="d-grid gap-2 no-print">
+                <a asp-action="Invoice" asp-route-id="@Model.OrderId" target="_blank"
+                   class="btn btn-outline-wood">Download Invoice</a>
+
+                @if (canCancel)
+                {
+                    <form asp-action="Cancel" asp-route-id="@Model.OrderId" method="post"
+                          onsubmit="return confirm('Are you sure you want to cancel this order?');">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-danger w-100">Cancel Order</button>
+                    </form>
+                }
+
+                <a href="https://wa.me/@site.WhatsAppNumber?text=@Uri.EscapeDataString($"I have a question about order {Model.OrderNumber}.")"
+                   target="_blank" rel="noopener" class="btn btn-whatsapp">Ask on WhatsApp</a>
+
+                <a asp-action="Index" class="btn btn-outline-wood">← All Orders</a>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,161 @@
+@using Microsoft.Extensions.Options
+@using WoodOnlineService.Models
+@model WoodOnlineService.ViewModels.HomeViewModel
+@inject IOptions<SiteSettings> Site
+@{
+    var site = Site.Value;
+    ViewData["Title"] = "Home";
+}
+
+<section class="hero">
+    <div class="container py-5">
+        <div class="row">
+            <div class="col-lg-7">
+                <span class="badge badge-soft mb-3" style="font-size:.8rem;">Solid Wood · Handcrafted</span>
+                <h1 class="mb-3">Strong wooden furniture for your home</h1>
+                <p class="lead mb-4">
+                    Handmade furniture in seasoned Sheesham, Teak and Mango wood.
+                    From dining to bedroom, storage and custom work, all in one place.
+                </p>
+                <div class="d-flex flex-wrap gap-2">
+                    <a asp-controller="Shop" asp-action="Index" class="btn btn-wood btn-lg">Browse Products</a>
+                    <a href="https://wa.me/@site.WhatsAppNumber" target="_blank" rel="noopener" class="btn btn-whatsapp btn-lg">
+                        Ask on WhatsApp
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="py-4 bg-wood-50 border-bottom border-wood">
+    <div class="container">
+        <div class="row text-center g-3">
+            <div class="col-6 col-md-3">
+                <div class="fs-3">🔨</div>
+                <div class="fw-bold text-wood">Handmade</div>
+                <div class="small text-muted-wood">Skill, not machines</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="fs-3">🛡️</div>
+                <div class="fw-bold text-wood">Termite-treated</div>
+                <div class="small text-muted-wood">Seasoned timber</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="fs-3">📏</div>
+                <div class="fw-bold text-wood">Custom sizes</div>
+                <div class="small text-muted-wood">Built to your needs</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="fs-3">🚚</div>
+                <div class="fw-bold text-wood">Home Delivery</div>
+                <div class="small text-muted-wood">₹@site.FreeShippingAbove.ToString("N0")+ and above</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@if (Model.Categories.Count > 0)
+{
+    <section class="py-5">
+        <div class="container">
+            <h2 class="section-title text-center">Categories</h2>
+            <div class="row g-3 g-md-4">
+                @foreach (var cat in Model.Categories)
+                {
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <a asp-controller="Shop" asp-action="Index" asp-route-categoryId="@cat.CategoryId" class="cat-tile">
+                            <img src="@(cat.ImageUrl ?? "/img/cat-custom.svg")" alt="@cat.Name" loading="lazy" />
+                            <h3>@cat.Name</h3>
+                            <p>@(cat.Products?.Count ?? 0) items</p>
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+@if (Model.FeaturedProducts.Count > 0)
+{
+    <section class="py-5 bg-wood-50">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-4">
+                <h2 class="section-title mb-0">Featured Products</h2>
+                <a asp-controller="Shop" asp-action="Index" class="btn btn-outline-wood btn-sm">View all →</a>
+            </div>
+            <div class="row g-3 g-md-4">
+                @foreach (var p in Model.FeaturedProducts)
+                {
+                    <div class="col-6 col-md-4 col-lg-3">
+                        @await Html.PartialAsync("_ProductCard", p)
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+<section class="py-5">
+    <div class="container">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-6">
+                <img src="~/img/workshop.svg" alt="Our workshop" class="img-fluid rounded" style="border:1px solid var(--line);" loading="lazy" />
+            </div>
+            <div class="col-lg-6">
+                <h2 class="section-title">Our Craft</h2>
+                <p>
+                    We have worked with wood for generations. Every table, chair and wardrobe
+                    is made by hand in our workshop, with no shortcuts and no cheap plywood filling.
+                </p>
+                <p>
+                    The timber is properly seasoned first so it will not crack or warp later.
+                    Then it is termite treated, and our craftsmen cut mortise-and-tenon joints
+                    that stay strong for decades.
+                </p>
+                <ul class="list-unstyled">
+                    <li class="mb-2">✅ Solid wood, the same timber inside and out</li>
+                    <li class="mb-2">✅ Can be custom made to your measurements</li>
+                    <li class="mb-2">✅ Polish of your choice: natural, walnut or mahogany</li>
+                    <li class="mb-2">✅ Home delivery and assembly</li>
+                </ul>
+                <a asp-controller="Home" asp-action="About" class="btn btn-outline-wood">Learn More</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+@if (Model.LatestProducts.Count > 0)
+{
+    <section class="py-5 bg-wood-50">
+        <div class="container">
+            <h2 class="section-title">New Arrivals</h2>
+            <div class="row g-3 g-md-4">
+                @foreach (var p in Model.LatestProducts)
+                {
+                    <div class="col-6 col-md-4 col-lg-3">
+                        @await Html.PartialAsync("_ProductCard", p)
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+<section class="py-5">
+    <div class="container">
+        <div class="panel">
+            <div class="panel-body text-center py-5">
+                <h2 class="mb-3">Need Something Different?</h2>
+                <p class="text-muted-wood mb-4 mx-auto" style="max-width:38rem;">
+                    Have furniture made to your own measurements, design and choice of wood.
+                    Send a photo or a sketch and we will send you a quotation.
+                </p>
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <a asp-controller="Home" asp-action="Contact" class="btn btn-wood btn-lg">Send Inquiry</a>
+                    <a href="tel:@site.Phone.Replace(" ", "")" class="btn btn-outline-wood btn-lg">📞 @site.Phone</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

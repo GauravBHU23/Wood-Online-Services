@@ -1,0 +1,107 @@
+@model WoodOnlineService.Models.Inquiry
+@{
+    ViewData["Title"] = $"Inquiry #{Model.InquiryId}";
+    var digits = new string(Model.Phone.Where(char.IsDigit).ToArray());
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="mb-1">Inquiry #@Model.InquiryId</h1>
+        <p class="text-muted-wood mb-0">@Model.CreatedDate.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt")</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-wood">← Sab inquiries</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="panel mb-3">
+            <div class="panel-header">Customer Message</div>
+            <div class="panel-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <div class="small text-muted-wood">Naam</div>
+                        <div class="fw-bold">@Model.Name</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="small text-muted-wood">Phone</div>
+                        <div class="fw-bold"><a href="tel:@Model.Phone">@Model.Phone</a></div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(Model.Email))
+                    {
+                        <div class="col-md-6">
+                            <div class="small text-muted-wood">Email</div>
+                            <div><a href="mailto:@Model.Email">@Model.Email</a></div>
+                        </div>
+                    }
+                    @if (Model.Product is not null)
+                    {
+                        <div class="col-md-6">
+                            <div class="small text-muted-wood">Product</div>
+                            <a asp-area="" asp-controller="Shop" asp-action="Details" asp-route-id="@Model.ProductId"
+                               target="_blank" class="fw-bold">@Model.Product.Name ↗</a>
+                        </div>
+                    }
+                </div>
+
+                <hr />
+
+                <div class="small text-muted-wood mb-1">Message</div>
+                <div class="bg-wood-50 rounded p-3" style="white-space:pre-line;">@Model.Message</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">Quick Reply</div>
+            <div class="panel-body d-flex flex-wrap gap-2">
+                <a href="tel:@Model.Phone" class="btn btn-wood">📞 Call</a>
+                <a href="https://wa.me/@digits?text=@Uri.EscapeDataString($"Namaste {Model.Name}, aapki inquiry ke liye dhanyavaad. ")"
+                   target="_blank" rel="noopener" class="btn btn-whatsapp">💬 WhatsApp</a>
+                @if (!string.IsNullOrWhiteSpace(Model.Email))
+                {
+                    <a href="mailto:@Model.Email?subject=@Uri.EscapeDataString("About your inquiry")"
+                       class="btn btn-outline-wood">✉️ Email</a>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="panel mb-3">
+            <div class="panel-header">Status and Notes</div>
+            <div class="panel-body">
+                <form asp-action="UpdateStatus" asp-route-id="@Model.InquiryId" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-select">
+                            @foreach (var s in Enum.GetValues<InquiryStatus>())
+                            {
+                                <option value="@s" selected="@(Model.Status == s)">@s</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Admin notes</label>
+                        <textarea name="adminNotes" rows="5" class="form-control"
+                                  placeholder="What was discussed, what was quoted, when to call again...">@Model.AdminNotes</textarea>
+                        <div class="small text-muted-wood mt-1">This is visible only to you, not to the customer.</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-wood w-100">Save Changes</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-body">
+                <form asp-action="Delete" asp-route-id="@Model.InquiryId" method="post"
+                      onsubmit="return confirm('Yeh inquiry hamesha ke liye Delete this?');">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-danger w-100">Delete Inquiry</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

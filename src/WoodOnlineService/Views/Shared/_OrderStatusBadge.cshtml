@@ -1,0 +1,15 @@
+@model WoodOnlineService.Models.OrderStatus
+
+@{
+    var (css, label) = Model switch
+    {
+        WoodOnlineService.Models.OrderStatus.Pending   => ("bg-warning text-dark", "Pending"),
+        WoodOnlineService.Models.OrderStatus.Confirmed => ("bg-info text-dark", "Confirmed"),
+        WoodOnlineService.Models.OrderStatus.Shipped   => ("bg-primary", "Shipped"),
+        WoodOnlineService.Models.OrderStatus.Delivered => ("bg-success", "Delivered"),
+        WoodOnlineService.Models.OrderStatus.Cancelled => ("bg-danger", "Cancelled"),
+        _ => ("bg-secondary", Model.ToString())
+    };
+}
+
+<span class="badge @css">@label</span>

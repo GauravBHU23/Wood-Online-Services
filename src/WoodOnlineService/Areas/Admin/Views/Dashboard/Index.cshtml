@@ -1,0 +1,226 @@
+@model WoodOnlineService.Areas.Admin.ViewModels.DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="mb-1">Dashboard</h1>
+        <p class="text-muted-wood mb-0">Your shop at a glance</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-controller="Products" asp-action="Create" class="btn btn-wood btn-sm">+ New Product</a>
+        <a asp-controller="Categories" asp-action="Create" class="btn btn-outline-wood btn-sm">+ Category</a>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="stat-tile">
+            <div class="stat-label">Total Revenue</div>
+            <div class="stat-value">₹@Model.TotalRevenue.ToString("N0")</div>
+            <div class="small text-muted-wood">30 days: ₹@Model.RevenueLast30Days.ToString("N0")</div>
+        </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+        <div class="stat-tile" style="border-left-color:var(--gold);">
+            <div class="stat-label">Orders</div>
+            <div class="stat-value">@Model.TotalOrders</div>
+            <div class="small @(Model.PendingOrders > 0 ? "text-danger fw-bold" : "text-muted-wood")">
+                @Model.PendingOrders pending
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+        <div class="stat-tile" style="border-left-color:var(--success);">
+            <div class="stat-label">Products</div>
+            <div class="stat-value">@Model.TotalProducts</div>
+            <div class="small @(Model.OutOfStockCount > 0 ? "text-danger fw-bold" : "text-muted-wood")">
+                @Model.OutOfStockCount out of stock
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+        <div class="stat-tile" style="border-left-color:var(--danger);">
+            <div class="stat-label">Inquiries</div>
+            <div class="stat-value">@Model.TotalInquiries</div>
+            <div class="small @(Model.NewInquiries > 0 ? "text-danger fw-bold" : "text-muted-wood")">
+                @Model.NewInquiries naye
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Recent orders -->
+    <div class="col-lg-7">
+        <div class="panel">
+            <div class="panel-header d-flex justify-content-between align-items-center">
+                <span>Recent Orders</span>
+                <a asp-controller="Orders" asp-action="Index" class="btn btn-sm btn-outline-wood">View all</a>
+            </div>
+
+            @if (Model.RecentOrders.Count == 0)
+            {
+                <div class="panel-body text-center text-muted-wood py-4">
+                    <div style="font-size:2rem;">📦</div>
+                    <p class="mb-0 small">No orders yet.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table class="table table-wood mb-0">
+                        <thead>
+                            <tr>
+                                <th>Order</th>
+                                <th>Customer</th>
+                                <th class="text-end">Total</th>
+                                <th class="text-center">Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var o in Model.RecentOrders)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold small">@o.OrderNumber</div>
+                                        <div class="small text-muted-wood">@o.OrderDate.ToLocalTime().ToString("dd MMM, hh:mm tt")</div>
+                                    </td>
+                                    <td class="small">
+                                        @o.ShippingName<br />
+                                        <span class="text-muted-wood">@o.ShippingPhone</span>
+                                    </td>
+                                    <td class="text-end fw-bold">₹@o.TotalAmount.ToString("N0")</td>
+                                    <td class="text-center">
+                                        <partial name="_OrderStatusBadge" model="o.OrderStatus" />
+                                    </td>
+                                    <td class="text-end">
+                                        <a asp-controller="Orders" asp-action="Details" asp-route-id="@o.OrderId"
+                                           class="btn btn-sm btn-outline-wood">→</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Recent inquiries -->
+    <div class="col-lg-5">
+        <div class="panel">
+            <div class="panel-header d-flex justify-content-between align-items-center">
+                <span>Recent Inquiries</span>
+                <a asp-controller="Inquiries" asp-action="Index" class="btn btn-sm btn-outline-wood">View all</a>
+            </div>
+
+            @if (Model.RecentInquiries.Count == 0)
+            {
+                <div class="panel-body text-center text-muted-wood py-4">
+                    <div style="font-size:2rem;">💬</div>
+                    <p class="mb-0 small">No inquiries yet.</p>
+                </div>
+            }
+            else
+            {
+                <div class="list-group list-group-flush">
+                    @foreach (var i in Model.RecentInquiries)
+                    {
+                        <a asp-controller="Inquiries" asp-action="Details" asp-route-id="@i.InquiryId"
+                           class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <div class="flex-grow-1" style="min-width:0;">
+                                    <div class="fw-bold small">@i.Name</div>
+                                    <div class="small text-muted-wood">@i.Phone</div>
+                                    @if (i.Product is not null)
+                                    {
+                                        <div class="small"><span class="badge badge-soft">@i.Product.Name</span></div>
+                                    }
+                                    <div class="small text-truncate text-muted-wood mt-1">@i.Message</div>
+                                </div>
+                                <div class="text-end flex-shrink-0">
+                                    @if (i.Status == InquiryStatus.New)
+                                    {
+                                        <span class="badge bg-danger">New</span>
+                                    }
+                                    else if (i.Status == InquiryStatus.Contacted)
+                                    {
+                                        <span class="badge bg-info text-dark">Contacted</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Closed</span>
+                                    }
+                                    <div class="small text-muted-wood mt-1">@i.CreatedDate.ToLocalTime().ToString("dd MMM")</div>
+                                </div>
+                            </div>
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Low stock -->
+    <div class="col-12">
+        <div class="panel">
+            <div class="panel-header">⚠️ Low Stock (3 or fewer)</div>
+
+            @if (Model.LowStockProducts.Count == 0)
+            {
+                <div class="panel-body text-center text-muted-wood py-4">
+                    <div style="font-size:2rem;">✅</div>
+                    <p class="mb-0 small">All products have healthy stock levels.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table class="table table-wood mb-0">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Category</th>
+                                <th class="text-center">Stock</th>
+                                <th class="text-end">Price</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in Model.LowStockProducts)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <img src="@(p.ImageUrl ?? "/img/cat-custom.svg")" alt=""
+                                                 style="width:44px;height:36px;object-fit:cover;border-radius:6px;border:1px solid var(--line);" />
+                                            <span class="fw-bold small">@p.Name</span>
+                                        </div>
+                                    </td>
+                                    <td class="small">@p.Category?.Name</td>
+                                    <td class="text-center">
+                                        <span class="badge @(p.StockQuantity <= 0 ? "bg-danger" : "bg-warning text-dark")">
+                                            @p.StockQuantity
+                                        </span>
+                                    </td>
+                                    <td class="text-end">₹@p.Price.ToString("N0")</td>
+                                    <td class="text-end">
+                                        <a asp-controller="Products" asp-action="Edit" asp-route-id="@p.ProductId"
+                                           class="btn btn-sm btn-outline-wood">Update Stock</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>

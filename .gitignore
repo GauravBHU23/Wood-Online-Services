@@ -1,0 +1,53 @@
+## Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.user
+*.suo
+publish/
+*.pubxml.user
+deploy.zip
+
+## IDEs
+.vs/
+.idea/
+.vscode/
+*.userprefs
+
+## Secrets — real credentials must never be committed
+appsettings.Production.json
+appsettings.Local.json
+appsettings.*.Local.json
+# Development config can hold live gateway keys while testing through a tunnel.
+appsettings.Development.json
+secrets.json
+*.pfx
+*.key
+
+## Local development database (SQLite) — never committed
+*.db
+*.db-shm
+*.db-wal
+woodonline-dev.db*
+*.mdf
+*.ldf
+
+## Uploaded images. Admin-uploaded files are named as a 32-char hex GUID; those are
+## the shop's own photos and belong in a backup, not in git. The seeded placeholder
+## artwork has readable names and stays committed so a fresh clone isn't empty.
+wwwroot/uploads/products/????????????????????????????????.*
+wwwroot/uploads/categories/????????????????????????????????.*
+
+## Logs
+*.log
+logs/
+
+## OS noise
+.DS_Store
+Thumbs.db
+
+## Local tooling downloaded on demand (cloudflared tunnel binary)
+tools/

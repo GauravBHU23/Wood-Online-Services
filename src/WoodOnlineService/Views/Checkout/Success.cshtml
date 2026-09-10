@@ -1,0 +1,126 @@
+@using Microsoft.Extensions.Options
+@using WoodOnlineService.Models
+@model WoodOnlineService.Models.Order
+@inject IOptions<SiteSettings> Site
+@{
+    ViewData["Title"] = "Order Confirm";
+    var site = Site.Value;
+}
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="panel mb-4">
+                <div class="panel-body text-center py-5">
+                    <div style="font-size:3.5rem;" class="mb-3">🎉</div>
+                    <h1 class="mb-2">Order Received!</h1>
+                    <p class="text-muted-wood mb-3">
+                        Thank you, @Model.ShippingName. We have received your order.
+                    </p>
+                    <div class="d-inline-block bg-wood-50 border border-wood rounded px-4 py-2 mb-3">
+                        <div class="small text-muted-wood">Order Number</div>
+                        <div class="fw-bold" style="font-size:1.2rem;color:var(--wood-900);">@Model.OrderNumber</div>
+                    </div>
+                    <p class="small text-muted-wood mb-0">
+                        Hum jaldi hi aapko <strong>@Model.ShippingPhone</strong> par call karke order confirm karenge.
+                    </p>
+                </div>
+            </div>
+
+            <div class="panel mb-4">
+                <div class="panel-header">Order Details</div>
+                <div class="table-wrap">
+                    <table class="table table-wood mb-0">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th class="text-end">Price</th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.Items)
+                            {
+                                <tr>
+                                    <td>@item.ProductName</td>
+                                    <td class="text-end">₹@item.UnitPrice.ToString("N0")</td>
+                                    <td class="text-center">@item.Quantity</td>
+                                    <td class="text-end">₹@item.LineTotal.ToString("N0")</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot class="bg-wood-50">
+                            <tr>
+                                <td colspan="3" class="text-end">Subtotal</td>
+                                <td class="text-end">₹@Model.SubTotal.ToString("N0")</td>
+                            </tr>
+                            <tr>
+                                <td colspan="3" class="text-end">Delivery</td>
+                                <td class="text-end">
+                                    @(Model.ShippingCharge <= 0 ? "Free" : "₹" + Model.ShippingCharge.ToString("N0"))
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="3" class="text-end fw-bold">Total</td>
+                                <td class="text-end fw-bold" style="font-size:1.1rem;color:var(--wood-800);">
+                                    ₹@Model.TotalAmount.ToString("N0")
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="panel h-100">
+                        <div class="panel-header">Delivery address</div>
+                        <div class="panel-body">
+                            <p class="mb-1"><strong>@Model.ShippingName</strong></p>
+                            <p class="mb-1">📞 @Model.ShippingPhone</p>
+                            <p class="mb-0 small">
+                                @Model.ShippingAddress<br />
+                                @Model.ShippingCity, @Model.ShippingState - @Model.ShippingPinCode
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="panel h-100">
+                        <div class="panel-header">Payment</div>
+                        <div class="panel-body">
+                            <p class="mb-1">
+                                <strong>@(Model.PaymentMethod == PaymentMethod.CashOnDelivery ? "Cash on Delivery" : "Online Payment")</strong>
+                            </p>
+                            <p class="mb-0 small text-muted-wood">
+                                @if (Model.PaymentMethod == PaymentMethod.CashOnDelivery)
+                                {
+                                    <text>Saman ghar pahunchne par ₹@Model.TotalAmount.ToString("N0") is payable.</text>
+                                }
+                                else
+                                {
+                                    <text>Payment mil gaya hai.</text>
+                                }
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap justify-content-center gap-2 no-print">
+                <a asp-controller="Orders" asp-action="Details" asp-route-id="@Model.OrderId" class="btn btn-wood">
+                    Track Order
+                </a>
+                <a asp-controller="Shop" asp-action="Index" class="btn btn-outline-wood">Continue Shopping</a>
+                <button onclick="window.print()" class="btn btn-outline-wood">🖨️ Print</button>
+            </div>
+
+            <p class="text-center small text-muted-wood mt-4">
+                If you need help, call <a href="tel:@site.Phone.Replace(" ", "")">@site.Phone</a> 
+                ya <a href="https://wa.me/@site.WhatsAppNumber" target="_blank" rel="noopener">WhatsApp</a> .
+            </p>
+        </div>
+    </div>
+</div>

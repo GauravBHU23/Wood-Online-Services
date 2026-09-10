@@ -1,0 +1,81 @@
+@{
+    ViewData["Title"] = "License";
+    var year = DateTime.Now.Year;
+}
+
+<div class="bg-wood-50 border-bottom border-wood py-4">
+    <div class="container">
+        <h1 class="mb-1">License</h1>
+        <p class="text-muted-wood mb-0">Software licensing and attribution</p>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="panel mb-4">
+                <div class="panel-header">MIT License</div>
+                <div class="panel-body">
+                    <p class="mb-3"><strong>Copyright &copy; @year Er Gaurav Kumar</strong></p>
+
+                    <p>
+                        Permission is hereby granted, free of charge, to any person obtaining a copy
+                        of this software and associated documentation files (the &ldquo;Software&rdquo;), to deal
+                        in the Software without restriction, including without limitation the rights
+                        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+                        copies of the Software, and to permit persons to whom the Software is
+                        furnished to do so, subject to the following conditions:
+                    </p>
+
+                    <p>
+                        The above copyright notice and this permission notice shall be included in all
+                        copies or substantial portions of the Software.
+                    </p>
+
+                    <p class="mb-0" style="text-transform:uppercase;font-size:.85rem;color:var(--ink-soft);">
+                        The software is provided &ldquo;as is&rdquo;, without warranty of any kind, express or
+                        implied, including but not limited to the warranties of merchantability,
+                        fitness for a particular purpose and noninfringement. In no event shall the
+                        authors or copyright holders be liable for any claim, damages or other
+                        liability, whether in an action of contract, tort or otherwise, arising from,
+                        out of or in connection with the software or the use or other dealings in the
+                        software.
+                    </p>
+                </div>
+            </div>
+
+            <div class="panel mb-4">
+                <div class="panel-header">Credits</div>
+                <div class="panel-body">
+                    <table class="table table-sm spec-table mb-0">
+                        <tbody>
+                            <tr><th>Designed &amp; Developed by</th><td>Er Gaurav Kumar</td></tr>
+                            <tr><th>Framework</th><td>ASP.NET Core 8 MVC</td></tr>
+                            <tr><th>Database</th><td>Microsoft Azure SQL Database</td></tr>
+                            <tr><th>UI Framework</th><td>Bootstrap 5 (MIT License)</td></tr>
+                            <tr><th>Payment Gateway</th><td>Instamojo</td></tr>
+                            <tr><th>Hosting</th><td>Microsoft Azure App Service</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">Third-Party Licenses</div>
+                <div class="panel-body">
+                    <p class="small text-muted-wood mb-3">
+                        This application uses the following open source components,
+                        each under its own license:
+                    </p>
+                    <ul class="mb-0" style="font-size:.92rem;">
+                        <li><strong>Bootstrap 5</strong> &mdash; MIT License</li>
+                        <li><strong>jQuery</strong> &mdash; MIT License</li>
+                        <li><strong>jQuery Validation</strong> &mdash; MIT License</li>
+                        <li><strong>ASP.NET Core</strong> &mdash; MIT License (Microsoft)</li>
+                        <li><strong>Entity Framework Core</strong> &mdash; MIT License (Microsoft)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

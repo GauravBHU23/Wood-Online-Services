@@ -1,0 +1,262 @@
+@using Microsoft.Extensions.Options
+@using WoodOnlineService.Services
+@model WoodOnlineService.Services.InvoiceModel
+@inject IOptions<SiteSettings> Site
+@{
+    var site = Site.Value;
+    var order = Model.Order;
+    var isCod = order.PaymentMethod == PaymentMethod.CashOnDelivery;
+
+    // A bill for money already taken is a Tax Invoice; one that is still unpaid is a Proforma.
+    var isPaid = order.PaymentStatus == PaymentStatus.Paid;
+    var docTitle = Model.HasGst
+        ? (isPaid ? "TAX INVOICE" : "PROFORMA INVOICE")
+        : (isPaid ? "INVOICE" : "PROFORMA INVOICE");
+}
+
+<div class="invoice-sheet">
+
+    <!-- Header -->
+    <div class="inv-head">
+        <div class="inv-head__brand">
+            <img src="~/img/logo.svg" alt="@site.ShopName" class="inv-logo" />
+            <div class="inv-seller">
+                <div class="inv-seller__name">@site.ShopName</div>
+                <div>@site.AddressLine1</div>
+                <div>@site.AddressLine2</div>
+                <div>Phone: @site.Phone</div>
+                <div>Email: @site.Email</div>
+                @if (!string.IsNullOrWhiteSpace(site.GstNumber))
+                {
+                    <div class="inv-seller__gst">GSTIN: @site.GstNumber</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(site.PanNumber))
+                {
+                    <div>PAN: @site.PanNumber</div>
+                }
+            </div>
+        </div>
+
+        <div class="inv-head__meta">
+            <div class="inv-doctype">@docTitle</div>
+            <table class="inv-meta-table">
+                <tr><td>Invoice No.</td><td><strong>@Model.InvoiceNumber</strong></td></tr>
+                <tr><td>Invoice Date</td><td>@Model.InvoiceDate.ToLocalTime().ToString("dd MMM yyyy")</td></tr>
+                <tr><td>Order No.</td><td>@order.OrderNumber</td></tr>
+                @if (!string.IsNullOrWhiteSpace(site.StateName))
+                {
+                    <tr><td>Place of Supply</td><td>@order.ShippingState</td></tr>
+                }
+            </table>
+
+            <div class="inv-status inv-status--@(isPaid ? "paid" : "due")">
+                @(isPaid ? "PAID" : (isCod ? "PAYABLE ON DELIVERY" : "PAYMENT PENDING"))
+            </div>
+        </div>
+    </div>
+
+    <!-- Parties -->
+    <div class="inv-parties">
+        <div class="inv-party">
+            <div class="inv-party__label">Bill To</div>
+            <div class="inv-party__name">@order.ShippingName</div>
+            <div>@order.ShippingAddress</div>
+            <div>@order.ShippingCity, @order.ShippingState - @order.ShippingPinCode</div>
+            <div>Phone: @order.ShippingPhone</div>
+            @if (order.User is not null && !string.IsNullOrWhiteSpace(order.User.Email))
+            {
+                <div>Email: @order.User.Email</div>
+            }
+        </div>
+
+        <div class="inv-party">
+            <div class="inv-party__label">Ship To</div>
+            <div class="inv-party__name">@order.ShippingName</div>
+            <div>@order.ShippingAddress</div>
+            <div>@order.ShippingCity, @order.ShippingState - @order.ShippingPinCode</div>
+            @if (!string.IsNullOrWhiteSpace(order.TrackingNumber))
+            {
+                <div class="mt-1">Tracking: <strong>@order.TrackingNumber</strong></div>
+            }
+        </div>
+    </div>
+
+    <!-- Items -->
+    <table class="inv-items">
+        <thead>
+            <tr>
+                <th style="width:34px;">#</th>
+                <th>Description</th>
+                <th style="width:56px;" class="text-center">Qty</th>
+                <th style="width:96px;" class="text-end">Rate</th>
+                <th style="width:104px;" class="text-end">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            @{ var n = 1; }
+            @foreach (var item in order.Items)
+            {
+                <tr>
+                    <td>@(n++)</td>
+                    <td>
+                        <div class="inv-item__name">@item.ProductName</div>
+                    </td>
+                    <td class="text-center">@item.Quantity</td>
+                    <td class="text-end">@item.UnitPrice.ToString("N2")</td>
+                    <td class="text-end">@item.LineTotal.ToString("N2")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <!-- Totals -->
+    <div class="inv-summary">
+        <div class="inv-words">
+            <div class="inv-words__label">Amount in words</div>
+            <div class="inv-words__value">@Model.AmountInWords</div>
+
+            @if (Model.HasGst)
+            {
+                <div class="inv-taxnote">
+                    @if (site.PricesIncludeGst)
+                    {
+                        <text>Listed prices are inclusive of GST at @Model.GstRate.ToString("0.##")%.</text>
+                    }
+                    else
+                    {
+                        <text>GST at @Model.GstRate.ToString("0.##")% has been added to the taxable value.</text>
+                    }
+                </div>
+            }
+        </div>
+
+        <table class="inv-totals">
+            @if (Model.HasGst)
+            {
+                <tr>
+                    <td>Taxable Value</td>
+                    <td class="text-end">&#8377;@Model.TaxableValue.ToString("N2")</td>
+                </tr>
+
+                @if (Model.IsInterState)
+                {
+                    <tr>
+                        <td>IGST @Model.GstRate.ToString("0.##")%</td>
+                        <td class="text-end">&#8377;@Model.IgstAmount.ToString("N2")</td>
+                    </tr>
+                }
+                else
+                {
+                    <tr>
+                        <td>CGST @((Model.GstRate / 2).ToString("0.##"))%</td>
+                        <td class="text-end">&#8377;@Model.CgstAmount.ToString("N2")</td>
+                    </tr>
+                    <tr>
+                        <td>SGST @((Model.GstRate / 2).ToString("0.##"))%</td>
+                        <td class="text-end">&#8377;@Model.SgstAmount.ToString("N2")</td>
+                    </tr>
+                }
+            }
+            else
+            {
+                <tr>
+                    <td>Subtotal</td>
+                    <td class="text-end">&#8377;@order.SubTotal.ToString("N2")</td>
+                </tr>
+            }
+
+            <tr>
+                <td>Delivery</td>
+                <td class="text-end">
+                    @(Model.ShippingCharge <= 0 ? "Free" : "₹" + Model.ShippingCharge.ToString("N2"))
+                </td>
+            </tr>
+
+            @if (Model.RoundOff != 0)
+            {
+                <tr>
+                    <td>Round Off</td>
+                    <td class="text-end">
+                        @(Model.RoundOff > 0 ? "+" : "")&#8377;@Model.RoundOff.ToString("N2")
+                    </td>
+                </tr>
+            }
+
+            <tr class="inv-totals__grand">
+                <td>Grand Total</td>
+                <td class="text-end">&#8377;@Model.GrandTotal.ToString("N2")</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Payment -->
+    <div class="inv-payment">
+        <div class="inv-payment__col">
+            <div class="inv-party__label">Payment Details</div>
+            <div>Method: <strong>@(isCod ? "Cash on Delivery" : "Online Payment")</strong></div>
+            <div>Status: <strong>@order.PaymentStatus</strong></div>
+            @if (!string.IsNullOrWhiteSpace(order.PaymentReference))
+            {
+                <div>Transaction Ref: @order.PaymentReference</div>
+            }
+            @if (isCod && !isPaid)
+            {
+                <div class="inv-due">Amount due on delivery: &#8377;@Model.GrandTotal.ToString("N2")</div>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(site.BankAccountNumber) || !string.IsNullOrWhiteSpace(site.UpiId))
+        {
+            <div class="inv-payment__col">
+                <div class="inv-party__label">Bank Details</div>
+                @if (!string.IsNullOrWhiteSpace(site.BankName))
+                {
+                    <div>Bank: @site.BankName</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(site.BankAccountNumber))
+                {
+                    <div>A/C: @site.BankAccountNumber</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(site.BankIfsc))
+                {
+                    <div>IFSC: @site.BankIfsc</div>
+                }
+                @if (!string.IsNullOrWhiteSpace(site.UpiId))
+                {
+                    <div>UPI: @site.UpiId</div>
+                }
+            </div>
+        }
+
+        <div class="inv-payment__col inv-sign">
+            <div class="inv-sign__for">For @site.ShopName</div>
+            <div class="inv-sign__space"></div>
+            <div class="inv-sign__label">Authorised Signatory</div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(order.Notes))
+    {
+        <div class="inv-notes">
+            <span class="inv-party__label">Customer Note</span>
+            <div>@order.Notes</div>
+        </div>
+    }
+
+    <!-- Terms -->
+    <div class="inv-terms">
+        <div class="inv-party__label">Terms &amp; Conditions</div>
+        <ol>
+            <li>Goods once sold are taken back only if they are defective or damaged in transit.</li>
+            <li>Please report transit damage within 48 hours of delivery, with photographs.</li>
+            <li>Our joinery and workmanship are warranted for 12 months from the date of delivery.</li>
+            <li>Solid wood shows natural variation in grain and colour; this is not a defect.</li>
+            <li>Made-to-order items cannot be cancelled once work has begun.</li>
+        </ol>
+    </div>
+
+    <div class="inv-footer">
+        <div>This is a computer-generated invoice and is valid without a physical signature.</div>
+        <div>@site.ShopName &middot; @site.Phone &middot; @site.Email</div>
+    </div>
+</div>

@@ -1,0 +1,317 @@
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.Extensions.Options
+@using WoodOnlineService.Data
+@inject IOptions<SiteSettings> Site
+@inject IOptions<FeatureSettings> Features
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+@{
+    var site = Site.Value;
+    var features = Features.Value;
+    var cartCount = ViewBag.CartCount as int? ?? 0;
+    var isSignedIn = SignInManager.IsSignedIn(User);
+    var isAdmin = isSignedIn && User.IsInRole(Roles.Admin);
+    var currentUser = isSignedIn ? await UserManager.GetUserAsync(User) : null;
+    var year = DateTime.Now.Year;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>@ViewData["Title"] — @site.ShopName</title>
+    <meta name="description" content="@(ViewData["MetaDescription"] ?? site.Tagline)" />
+    <meta name="theme-color" content="#6d4423" />
+    <meta name="author" content="Er Gaurav Kumar" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="@ViewData["Title"] — @site.ShopName" />
+    <meta property="og:description" content="@(ViewData["MetaDescription"] ?? site.Tagline)" />
+    <meta property="og:site_name" content="@site.ShopName" />
+
+    <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="~/img/icon-192.png" />
+    @if (features.EnablePwa)
+    {
+        <link rel="manifest" href="~/manifest.webmanifest" />
+    }
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <a href="#mainContent" class="visually-hidden-focusable skip-link">Skip to main content</a>
+
+    <div id="offlineBanner" class="offline-banner" role="status">
+        You are offline. Some features are unavailable.
+    </div>
+
+    <div class="topbar d-none d-md-block">
+        <div class="container d-flex justify-content-between align-items-center">
+            <span>
+                <a href="tel:@site.Phone.Replace(" ", "")">@site.Phone</a>
+                &nbsp;&middot;&nbsp;
+                <a href="mailto:@site.Email">@site.Email</a>
+            </span>
+            <span>@site.WorkingHours</span>
+        </div>
+    </div>
+
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-wood sticky-top">
+            <div class="container">
+                <a class="navbar-brand" asp-controller="Home" asp-action="Index" aria-label="@site.ShopName home">
+                    <img src="~/img/logo.svg" alt="@site.ShopName" width="340" height="64" />
+                </a>
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false"
+                        aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="mainNav">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Index">Home</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Shop" asp-action="Index">Products</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="About">About Us</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Contact">Contact</a></li>
+                    </ul>
+
+                    <div class="search-wrap me-lg-3 my-2 my-lg-0" style="min-width:230px;">
+                        <label for="siteSearch" class="visually-hidden">Search products</label>
+                        <input type="search" id="siteSearch" class="form-control form-control-sm"
+                               placeholder="Search products..." autocomplete="off"
+                               aria-label="Search products" aria-controls="searchResults" />
+                        <div id="searchResults" class="search-results" role="listbox"
+                             aria-label="Search suggestions"></div>
+                    </div>
+
+                    <ul class="navbar-nav align-items-lg-center gap-lg-1">
+                        <li class="nav-item">
+                            <a class="nav-link position-relative js-cart-link"
+                               asp-controller="Cart" asp-action="Index" aria-label="Cart">
+                                Cart
+                                @if (cartCount > 0)
+                                {
+                                    <span class="cart-badge">@cartCount</span>
+                                }
+                            </a>
+                        </li>
+
+                        @if (isSignedIn)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" role="button"
+                                   data-bs-toggle="dropdown" aria-expanded="false">
+                                    @(currentUser?.FullName ?? User.Identity?.Name)
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" asp-controller="Orders" asp-action="Index">My Orders</a></li>
+                                    <li><a class="dropdown-item" asp-controller="Account" asp-action="Profile">My Profile</a></li>
+                                    @if (isAdmin)
+                                    {
+                                        <li><hr class="dropdown-divider" /></li>
+                                        <li>
+                                            <a class="dropdown-item fw-bold" asp-area="Admin"
+                                               asp-controller="Dashboard" asp-action="Index">Admin Panel</a>
+                                        </li>
+                                    }
+                                    <li><hr class="dropdown-divider" /></li>
+                                    <li>
+                                        <form asp-controller="Account" asp-action="Logout" method="post" class="px-1">
+                                            <button type="submit" class="dropdown-item">Sign Out</button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item"><a class="nav-link" asp-controller="Account" asp-action="Login">Sign In</a></li>
+                            <li class="nav-item">
+                                <a class="btn btn-wood btn-sm ms-lg-2" asp-controller="Account" asp-action="Register">Register</a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    @* TempData is replayed as a toast by site.js rather than rendered as a static alert. *@
+    @if (TempData["Success"] is string successMessage)
+    {
+        <div data-flash="success" hidden>@successMessage</div>
+    }
+    @if (TempData["Error"] is string errorMessage)
+    {
+        <div data-flash="error" hidden>@errorMessage</div>
+    }
+    @if (TempData["Warning"] is string warningMessage)
+    {
+        <div data-flash="warning" hidden>@warningMessage</div>
+    }
+    @if (TempData["Info"] is string infoMessage)
+    {
+        <div data-flash="info" hidden>@infoMessage</div>
+    }
+
+    <main id="mainContent">
+        @RenderBody()
+    </main>
+
+    <footer class="footer-wood">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-lg-4 col-md-6">
+                    <h5>@site.ShopName</h5>
+                    <p class="mb-2" style="font-size:.92rem;">@site.Tagline</p>
+                    <p style="font-size:.9rem;">
+                        Solid wood furniture for dining, bedroom, storage and custom work.
+                        Every piece is handmade from seasoned, termite-treated timber.
+                    </p>
+                </div>
+
+                <div class="col-lg-2 col-md-6">
+                    <h5>Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a asp-controller="Home" asp-action="Index">Home</a></li>
+                        <li><a asp-controller="Shop" asp-action="Index">Products</a></li>
+                        <li><a asp-controller="Home" asp-action="About">About Us</a></li>
+                        <li><a asp-controller="Home" asp-action="Contact">Contact</a></li>
+                        <li><a asp-controller="Orders" asp-action="Index">Track Order</a></li>
+                    </ul>
+                </div>
+
+                <div class="col-lg-3 col-md-6">
+                    <h5>Categories</h5>
+                    <ul class="list-unstyled">
+                        @foreach (var category in (ViewBag.FooterCategories as List<Category>) ?? [])
+                        {
+                            <li>
+                                <a asp-controller="Shop" asp-action="Index"
+                                   asp-route-categoryId="@category.CategoryId">@category.Name</a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+
+                <div class="col-lg-3 col-md-6">
+                    <h5>Get in Touch</h5>
+                    <ul class="list-unstyled">
+                        <li>@site.AddressLine1<br />@site.AddressLine2</li>
+                        <li><a href="tel:@site.Phone.Replace(" ", "")">@site.Phone</a></li>
+                        <li><a href="mailto:@site.Email">@site.Email</a></li>
+                        <li>@site.WorkingHours</li>
+                    </ul>
+                    <a class="btn btn-whatsapp btn-sm mt-2"
+                       href="https://wa.me/@site.WhatsAppNumber" target="_blank" rel="noopener noreferrer">
+                        Chat on WhatsApp
+                    </a>
+                </div>
+            </div>
+
+            @if (features.EnableVisitorCounter)
+            {
+                <div class="text-center mt-4">
+                    <div id="visitorBadge" class="visitor-badge d-none">
+                        <span class="visitor-badge__dot" aria-hidden="true"></span>
+                        <span>Visitors: <span class="js-visitor-count visitor-badge__value">-</span></span>
+                        <span class="d-none d-sm-inline">&middot;</span>
+                        <span class="d-none d-sm-inline">
+                            Your IP: <span class="js-visitor-ip visitor-badge__value">-</span>
+                        </span>
+                        <span class="d-none d-md-inline">&middot;</span>
+                        <span class="d-none d-md-inline">
+                            <span class="js-visitor-location visitor-badge__value">-</span>
+                        </span>
+                    </div>
+                </div>
+            }
+
+            <div class="footer-bottom">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-6 text-center text-md-start">
+                        &copy; @year @site.ShopName. All rights reserved.
+                    </div>
+                    <div class="col-md-6 text-center text-md-end">
+                        Designed &amp; Developed by <strong>Er Gaurav Kumar</strong>
+                        &nbsp;&middot;&nbsp;
+                        <a asp-controller="Home" asp-action="License">MIT License</a>
+                        &nbsp;&middot;&nbsp;
+                        <a asp-controller="Home" asp-action="Privacy">Privacy</a>
+                        &nbsp;&middot;&nbsp;
+                        <a asp-controller="Home" asp-action="Terms">Terms</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Chat assistant: answers from the shop's own catalogue and settings. -->
+    <button type="button" id="chatLauncher" class="chat-launcher"
+            aria-label="Chat with us" aria-expanded="false" aria-controls="chatPanel">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zM7 9h10v2H7V9zm6 5H7v-2h6v2zm4-6H7V6h10v2z" />
+        </svg>
+    </button>
+
+    <div id="chatPanel" class="chat-panel" role="dialog" aria-label="Chat with us">
+        <div class="chat-header">
+            <div>
+                <div class="chat-header__title">@site.ShopName</div>
+                <div class="chat-header__status">Usually replies instantly</div>
+            </div>
+            <button type="button" id="chatClose" class="chat-close" aria-label="Close chat">&times;</button>
+        </div>
+
+        <div id="chatBody" class="chat-body" role="log" aria-live="polite"></div>
+
+        <div class="chat-footer">
+            <form id="chatForm" data-no-guard>
+                <label for="chatInput" class="visually-hidden">Your question</label>
+                <input type="text" id="chatInput" maxlength="200" autocomplete="off"
+                       placeholder="Ask about products, prices, delivery..." />
+                <button type="submit" aria-label="Send">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <a class="whatsapp-float" href="https://wa.me/@site.WhatsAppNumber"
+       target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M17.47 14.38c-.3-.15-1.75-.86-2.02-.96-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.64.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.64-2.05-.17-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.6-.92-2.2-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.22 1.36.19 1.87.12.57-.09 1.75-.72 2-1.41.25-.7.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35M12.04 21.5h-.01a9.47 9.47 0 0 1-4.83-1.32l-.35-.2-3.59.94.96-3.5-.23-.36a9.44 9.44 0 0 1-1.45-5.05c0-5.22 4.26-9.47 9.5-9.47a9.44 9.44 0 0 1 9.49 9.48c0 5.22-4.26 9.48-9.49 9.48M20.52 3.49A11.8 11.8 0 0 0 12.04 0C5.5 0 .19 5.31.18 11.84c0 2.09.55 4.13 1.6 5.93L.08 24l6.37-1.67a11.9 11.9 0 0 0 5.59 1.42h.01c6.54 0 11.86-5.31 11.86-11.84 0-3.16-1.23-6.14-3.47-8.38" />
+        </svg>
+    </a>
+
+    @if (features.EnablePwa)
+    {
+        <div id="pwaPrompt" class="pwa-prompt">
+            <div class="fw-bold mb-1" style="color:var(--wood-900);">Install our app</div>
+            <p class="small text-muted-wood mb-3">
+                Add @site.ShopName to your home screen for faster access and offline browsing.
+            </p>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-wood btn-sm js-pwa-install">Install</button>
+                <button type="button" class="btn btn-outline-wood btn-sm js-pwa-dismiss">Not now</button>
+            </div>
+        </div>
+    }
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+    <script src="~/js/notify.js" asp-append-version="true"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/chatbot.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

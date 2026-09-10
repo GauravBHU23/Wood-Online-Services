@@ -1,0 +1,46 @@
+{
+  "//": "Copy this to appsettings.Development.json and adjust. That file is gitignored because it may hold live gateway keys.",
+
+  "//DatabaseProvider": "Sqlite needs nothing installed. Set to SqlServer and update the connection string to develop against the real engine.",
+  "DatabaseProvider": "Sqlite",
+  "ConnectionStrings": {
+    "DefaultConnection": "Data Source=woodonline-dev.db"
+  },
+
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "Microsoft.EntityFrameworkCore": "Warning"
+    }
+  },
+
+  "SiteSettings": {
+    "SiteBaseUrl": "http://localhost:5199"
+  },
+
+  "Security": {
+    "RequireHttps": false,
+    "GeneralRateLimit": 2000,
+    "SensitiveRateLimit": 200
+  },
+
+  "Features": {
+    "ModerateReviews": false
+  },
+
+  "//Instamojo": "Simulated is the safe default: full payment flow, no money, no public URL. To test the real gateway locally, run tools/cloudflared.exe (see README) and switch to the Live block below.",
+  "Instamojo": {
+    "Mode": "Simulated",
+    "SiteBaseUrl": "http://localhost:5199"
+  },
+
+  "//Instamojo-Live-Example": {
+    "Mode": "Live",
+    "ApiKey": "your-api-key",
+    "AuthToken": "your-auth-token",
+    "Salt": "your-private-salt",
+    "BaseUrl": "https://www.instamojo.com/api/1.1/",
+    "SiteBaseUrl": "https://your-tunnel-url.trycloudflare.com"
+  }
+}

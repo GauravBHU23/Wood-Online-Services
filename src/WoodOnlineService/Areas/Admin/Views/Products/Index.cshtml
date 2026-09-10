@@ -1,0 +1,175 @@
+@model WoodOnlineService.Areas.Admin.ViewModels.AdminListViewModel<WoodOnlineService.Models.Product>
+@{
+    ViewData["Title"] = "Products";
+    var categories = ViewBag.Categories as List<Category> ?? new List<Category>();
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="mb-1">Products</h1>
+        <p class="text-muted-wood mb-0">@Model.TotalCount product@(Model.TotalCount == 1 ? "" : "s")</p>
+    </div>
+    <a asp-action="Create" class="btn btn-wood">+ New Product</a>
+</div>
+
+<div class="panel mb-3">
+    <div class="panel-body py-3">
+        <form method="get" asp-action="Index" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label mb-1">Search</label>
+                <input type="search" name="search" value="@Model.Search" class="form-control" placeholder="Search by name or wood type..." />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label mb-1">Category</label>
+                <select name="categoryId" class="form-select">
+                    <option value="">All categories</option>
+                    @foreach (var c in categories)
+                    {
+                        <option value="@c.CategoryId" selected="@(Model.CategoryId == c.CategoryId)">@c.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-wood flex-grow-1">Filter</button>
+                @if (!string.IsNullOrWhiteSpace(Model.Search) || Model.CategoryId is not null)
+                {
+                    <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
+                }
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="panel">
+    @if (Model.Items.Count == 0)
+    {
+        <div class="empty-state">
+            <div style="font-size:3rem;">🪑</div>
+            <h3>No products found</h3>
+            <p>Add a new product, or change the filters.</p>
+            <a asp-action="Create" class="btn btn-wood mt-2">+ New Product</a>
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table table-wood mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:60px;"></th>
+                        <th>Product</th>
+                        <th>Category</th>
+                        <th class="text-end">Price</th>
+                        <th class="text-center">Stock</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model.Items)
+                    {
+                        <tr>
+                            <td>
+                                <img src="@(p.ImageUrl ?? "/img/cat-custom.svg")" alt=""
+                                     style="width:52px;height:42px;object-fit:cover;border-radius:6px;border:1px solid var(--line);" />
+                            </td>
+                            <td>
+                                <div class="fw-bold" style="font-size:.92rem;">@p.Name</div>
+                                @if (!string.IsNullOrWhiteSpace(p.WoodType))
+                                {
+                                    <div class="small text-muted-wood">@p.WoodType</div>
+                                }
+                            </td>
+                            <td class="small">@p.Category?.Name</td>
+                            <td class="text-end">
+                                @if (p.IsCustomOrder)
+                                {
+                                    <span class="small text-muted-wood">On request</span>
+                                }
+                                else
+                                {
+                                    <span class="fw-bold">₹@p.Price.ToString("N0")</span>
+                                    @if (p.OldPrice is > 0)
+                                    {
+                                        <div class="small text-muted-wood text-decoration-line-through">₹@p.OldPrice.Value.ToString("N0")</div>
+                                    }
+                                }
+                            </td>
+                            <td class="text-center">
+                                @if (p.IsCustomOrder)
+                                {
+                                    <span class="small text-muted-wood">—</span>
+                                }
+                                else
+                                {
+                                    <span class="badge @(p.StockQuantity <= 0 ? "bg-danger" : p.StockQuantity <= 3 ? "bg-warning text-dark" : "bg-success")">
+                                        @p.StockQuantity
+                                    </span>
+                                }
+                            </td>
+                            <td class="text-center">
+                                <div class="d-flex flex-column gap-1 align-items-center">
+                                    @if (p.IsAvailable)
+                                    {
+                                        <span class="badge bg-success">Live</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Hidden</span>
+                                    }
+                                    @if (p.IsFeatured)
+                                    {
+                                        <span class="badge badge-wood">Featured</span>
+                                    }
+                                    @if (p.IsCustomOrder)
+                                    {
+                                        <span class="badge badge-custom">Custom</span>
+                                    }
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <a asp-area="" asp-controller="Shop" asp-action="Details" asp-route-id="@p.ProductId"
+                                       target="_blank" class="btn btn-sm btn-outline-wood" title="View on site">👁</a>
+
+                                    <form asp-action="ToggleFeatured" asp-route-id="@p.ProductId" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-wood"
+                                                title="@(p.IsFeatured ? "Homepage se hatayein" : "Show on homepage")">
+                                            @(p.IsFeatured ? "★" : "☆")
+                                        </button>
+                                    </form>
+
+                                    <a asp-action="Edit" asp-route-id="@p.ProductId" class="btn btn-sm btn-outline-wood">Edit</a>
+
+                                    <form asp-action="Delete" asp-route-id="@p.ProductId" method="post"
+                                          onsubmit="return confirm('&quot;@p.Name&quot; Delete this?');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">✕</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="panel-body">
+                <nav>
+                    <ul class="pagination justify-content-center mb-0">
+                        @for (var i = 1; i <= Model.TotalPages; i++)
+                        {
+                            <li class="page-item @(i == Model.Page ? "active" : "")">
+                                <a class="page-link" asp-action="Index" asp-route-page="@i"
+                                   asp-route-search="@Model.Search" asp-route-categoryId="@Model.CategoryId">@i</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            </div>
+        }
+    }
+</div>

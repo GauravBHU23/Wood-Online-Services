@@ -1,0 +1,192 @@
+@model WoodOnlineService.Models.Order
+@{
+    ViewData["Title"] = $"Order {Model.OrderNumber}";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="mb-1">Order @Model.OrderNumber</h1>
+        <p class="text-muted-wood mb-0">@Model.OrderDate.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt")</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Invoice" asp-route-id="@Model.OrderId" target="_blank" class="btn btn-outline-wood">🧾 Invoice</a>
+        <a asp-action="Index" class="btn btn-outline-wood">← All Orders</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="panel mb-3">
+            <div class="panel-header">Items</div>
+            <div class="table-wrap">
+                <table class="table table-wood mb-0">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th class="text-end">Price</th>
+                            <th class="text-center">Qty</th>
+                            <th class="text-end">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-controller="Products" asp-action="Edit" asp-route-id="@item.ProductId"
+                                       style="color:var(--wood-900);font-weight:600;">@item.ProductName</a>
+                                </td>
+                                <td class="text-end">₹@item.UnitPrice.ToString("N0")</td>
+                                <td class="text-center">@item.Quantity</td>
+                                <td class="text-end fw-bold">₹@item.LineTotal.ToString("N0")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="bg-wood-50">
+                        <tr>
+                            <td colspan="3" class="text-end">Subtotal</td>
+                            <td class="text-end">₹@Model.SubTotal.ToString("N0")</td>
+                        </tr>
+                        <tr>
+                            <td colspan="3" class="text-end">Delivery</td>
+                            <td class="text-end">@(Model.ShippingCharge <= 0 ? "Free" : "₹" + Model.ShippingCharge.ToString("N0"))</td>
+                        </tr>
+                        <tr>
+                            <td colspan="3" class="text-end fw-bold">Total</td>
+                            <td class="text-end fw-bold" style="font-size:1.1rem;color:var(--wood-800);">
+                                ₹@Model.TotalAmount.ToString("N0")
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="panel h-100">
+                    <div class="panel-header">Delivery address</div>
+                    <div class="panel-body">
+                        <p class="mb-1"><strong>@Model.ShippingName</strong></p>
+                        <p class="mb-2">
+                            📞 <a href="tel:@Model.ShippingPhone">@Model.ShippingPhone</a>
+                            <a href="https://wa.me/@(new string(Model.ShippingPhone.Where(char.IsDigit).ToArray()))"
+                               target="_blank" rel="noopener" class="badge btn-whatsapp text-decoration-none ms-1">WhatsApp</a>
+                        </p>
+                        <p class="mb-0 small">
+                            @Model.ShippingAddress<br />
+                            @Model.ShippingCity, @Model.ShippingState - @Model.ShippingPinCode
+                        </p>
+                        @if (!string.IsNullOrWhiteSpace(Model.Notes))
+                        {
+                            <hr />
+                            <p class="small mb-0"><strong>Customer note:</strong><br />@Model.Notes</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="panel h-100">
+                    <div class="panel-header">Customer Account</div>
+                    <div class="panel-body">
+                        @if (Model.User is not null)
+                        {
+                            <p class="mb-1"><strong>@Model.User.FullName</strong></p>
+                            <p class="mb-1 small"><a href="mailto:@Model.User.Email">@Model.User.Email</a></p>
+                            <p class="mb-0 small text-muted-wood">
+                                Member since @Model.User.CreatedDate.ToLocalTime().ToString("dd MMM yyyy")
+                            </p>
+                        }
+                        else
+                        {
+                            <p class="text-muted-wood mb-0 small">No account details found.</p>
+                        }
+
+                        <hr />
+
+                        <p class="small mb-1">
+                            <strong>Payment:</strong>
+                            @(Model.PaymentMethod == PaymentMethod.CashOnDelivery ? "Cash on Delivery" : "Online")
+                        </p>
+                        @if (!string.IsNullOrWhiteSpace(Model.PaymentReference))
+                        {
+                            <p class="small mb-0 text-muted-wood">Ref: @Model.PaymentReference</p>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="panel mb-3">
+            <div class="panel-header">Update Order</div>
+            <div class="panel-body">
+                <form asp-action="UpdateStatus" asp-route-id="@Model.OrderId" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <label class="form-label">Order Status</label>
+                        <select name="orderStatus" class="form-select">
+                            @foreach (var s in Enum.GetValues<OrderStatus>())
+                            {
+                                <option value="@s" selected="@(Model.OrderStatus == s)">@s</option>
+                            }
+                        </select>
+                        <div class="small text-muted-wood mt-1">
+                            Cancelling automatically returns the stock.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Payment Status</label>
+                        <select name="paymentStatus" class="form-select">
+                            @foreach (var s in Enum.GetValues<PaymentStatus>())
+                            {
+                                <option value="@s" selected="@(Model.PaymentStatus == s)">@s</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Tracking Number</label>
+                        <input type="text" name="trackingNumber" value="@Model.TrackingNumber" class="form-control"
+                               placeholder="Transport or courier tracking number" />
+                        <div class="small text-muted-wood mt-1">
+                            The customer sees this on their order page.
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-wood w-100">Update</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">Timeline</div>
+            <div class="panel-body">
+                <ul class="list-unstyled mb-0 small">
+                    <li class="mb-2">
+                        📥 <strong>Order aaya</strong><br />
+                        <span class="text-muted-wood ms-4">@Model.OrderDate.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt")</span>
+                    </li>
+                    @if (Model.ShippedDate is not null)
+                    {
+                        <li class="mb-2">
+                            🚚 <strong>Shipped</strong><br />
+                            <span class="text-muted-wood ms-4">@Model.ShippedDate.Value.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt")</span>
+                        </li>
+                    }
+                    @if (Model.DeliveredDate is not null)
+                    {
+                        <li class="mb-0">
+                            ✅ <strong>Delivered</strong><br />
+                            <span class="text-muted-wood ms-4">@Model.DeliveredDate.Value.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt")</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

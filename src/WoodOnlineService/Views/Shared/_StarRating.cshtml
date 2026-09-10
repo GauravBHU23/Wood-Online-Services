@@ -1,0 +1,63 @@
+@model decimal
+@{
+    // Optional extras passed by the caller.
+    var count = ViewData["Count"] as int? ?? 0;
+    var showCount = ViewData["ShowCount"] as bool? ?? true;
+    var showValue = ViewData["ShowValue"] as bool? ?? true;
+    var size = ViewData["Size"] as string ?? "1rem";
+
+    var rounded = Math.Round(Model * 2, MidpointRounding.AwayFromZero) / 2;
+}
+
+<span class="rating-line">
+    <span class="stars" style="font-size:@size;" role="img"
+          aria-label="@Model.ToString("0.0") out of 5 stars">
+        @for (var i = 1; i <= 5; i++)
+        {
+            if (rounded >= i)
+            {
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path class="star-filled" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+            }
+            else if (rounded >= i - 0.5m)
+            {
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="half-@i-@Model.ToString("0.0").Replace(".", "")">
+                            <stop offset="50%" stop-color="var(--gold)" />
+                            <stop offset="50%" stop-color="var(--wood-200)" />
+                        </linearGradient>
+                    </defs>
+                    <path fill="url(#half-@i-@Model.ToString("0.0").Replace(".", ""))"
+                          d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+            }
+            else
+            {
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path class="star-empty" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+            }
+        }
+    </span>
+
+    @if (showValue && Model > 0)
+    {
+        <span class="rating-value">@Model.ToString("0.0")</span>
+    }
+
+    @if (showCount)
+    {
+        <span class="rating-count">
+            @if (count > 0)
+            {
+                <text>(@count @(count == 1 ? "review" : "reviews"))</text>
+            }
+            else
+            {
+                <text>No reviews yet</text>
+            }
+        </span>
+    }
+</span>

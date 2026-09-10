@@ -1,0 +1,192 @@
+@model WoodOnlineService.ViewModels.ShopViewModel
+@{
+    ViewData["Title"] = Model.CategoryName ?? "Products";
+}
+
+<div class="bg-wood-50 border-bottom border-wood py-4">
+    <div class="container">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-2 small">
+                <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Home</a></li>
+                <li class="breadcrumb-item"><a asp-controller="Shop" asp-action="Index">Products</a></li>
+                @if (Model.CategoryName is not null)
+                {
+                    <li class="breadcrumb-item active" aria-current="page">@Model.CategoryName</li>
+                }
+            </ol>
+        </nav>
+        <h1 class="mb-1">@(Model.CategoryName ?? "All Products")</h1>
+        <p class="text-muted-wood mb-0">@Model.TotalCount item@(Model.TotalCount == 1 ? "" : "s") found</p>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="row g-4">
+        <!-- Filters -->
+        <aside class="col-lg-3">
+            <form method="get" asp-action="Index" id="filterForm">
+                <div class="panel mb-3">
+                    <div class="panel-header">Search</div>
+                    <div class="panel-body">
+                        <div class="input-group">
+                            <input type="search" name="search" value="@Model.Search" class="form-control" placeholder="Search products..." />
+                            <button class="btn btn-wood" type="submit">🔍</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel mb-3">
+                    <div class="panel-header">Category</div>
+                    <div class="panel-body">
+                        <div class="d-grid gap-1">
+                            <a asp-action="Index" asp-route-search="@Model.Search" asp-route-sort="@Model.Sort"
+                               class="btn btn-sm text-start @(Model.CategoryId is null ? "btn-wood" : "btn-outline-wood")">
+                                All
+                            </a>
+                            @foreach (var c in Model.Categories)
+                            {
+                                <a asp-action="Index" asp-route-categoryId="@c.CategoryId" asp-route-search="@Model.Search" asp-route-sort="@Model.Sort"
+                                   class="btn btn-sm text-start @(Model.CategoryId == c.CategoryId ? "btn-wood" : "btn-outline-wood")">
+                                    @c.Name
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @if (Model.WoodTypes.Count > 0)
+                {
+                    <div class="panel mb-3">
+                        <div class="panel-header">Wood Type</div>
+                        <div class="panel-body">
+                            <select name="woodType" class="form-select" onchange="document.getElementById('filterForm').submit()">
+                                <option value="">Any wood type</option>
+                                @foreach (var w in Model.WoodTypes)
+                                {
+                                    <option value="@w" selected="@(Model.WoodType == w)">@w</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                }
+
+                <div class="panel mb-3">
+                    <div class="panel-header">Price (₹)</div>
+                    <div class="panel-body">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <input type="number" name="minPrice" value="@Model.MinPrice" class="form-control" placeholder="Min" min="0" />
+                            </div>
+                            <div class="col-6">
+                                <input type="number" name="maxPrice" value="@Model.MaxPrice" class="form-control" placeholder="Max" min="0" />
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-wood btn-sm w-100 mt-2">Apply Filter</button>
+                    </div>
+                </div>
+
+                @if (Model.CategoryId is not null || !string.IsNullOrWhiteSpace(Model.Search)
+                     || !string.IsNullOrWhiteSpace(Model.WoodType) || Model.MinPrice is not null || Model.MaxPrice is not null)
+                {
+                    <a asp-action="Index" class="btn btn-outline-secondary btn-sm w-100">Clear Filters</a>
+                }
+
+                <input type="hidden" name="categoryId" value="@Model.CategoryId" />
+                <input type="hidden" name="sort" value="@Model.Sort" />
+            </form>
+        </aside>
+
+        <!-- Results -->
+        <div class="col-lg-9">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <span class="small text-muted-wood">
+                    @if (Model.TotalCount > 0)
+                    {
+                        var from = (Model.Page - 1) * Model.PageSize + 1;
+                        var to = Math.Min(Model.Page * Model.PageSize, Model.TotalCount);
+                        <text>Showing @from&ndash;@to of @Model.TotalCount</text>
+                    }
+                </span>
+
+                <form method="get" asp-action="Index" class="d-flex align-items-center gap-2">
+                    <input type="hidden" name="categoryId" value="@Model.CategoryId" />
+                    <input type="hidden" name="search" value="@Model.Search" />
+                    <input type="hidden" name="woodType" value="@Model.WoodType" />
+                    <input type="hidden" name="minPrice" value="@Model.MinPrice" />
+                    <input type="hidden" name="maxPrice" value="@Model.MaxPrice" />
+                    <label class="form-label mb-0 small">Sort:</label>
+                    <select name="sort" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
+                        <option value="newest" selected="@(Model.Sort == "newest")">Newest first</option>
+                        <option value="price-low" selected="@(Model.Sort == "price-low")">Price: low to high</option>
+                        <option value="price-high" selected="@(Model.Sort == "price-high")">Price: high to low</option>
+                        <option value="name" selected="@(Model.Sort == "name")">Name (A-Z)</option>
+                    </select>
+                </form>
+            </div>
+
+            @if (Model.Products.Count == 0)
+            {
+                <div class="panel">
+                    <div class="empty-state">
+                        <div style="font-size:3rem;">🔍</div>
+                        <h3>No products found</h3>
+                        <p>Try changing the filters, or simply ask us directly.</p>
+                        <div class="d-flex flex-wrap justify-content-center gap-2 mt-3">
+                            <a asp-action="Index" class="btn btn-outline-wood">View all products</a>
+                            <a asp-controller="Home" asp-action="Contact" class="btn btn-wood">Send Inquiry</a>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="row g-3 g-md-4">
+                    @foreach (var p in Model.Products)
+                    {
+                        <div class="col-6 col-lg-4">
+                            @await Html.PartialAsync("_ProductCard", p)
+                        </div>
+                    }
+                </div>
+
+                @if (Model.TotalPages > 1)
+                {
+                    <nav class="mt-4" aria-label="Pages">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                                <a class="page-link" asp-action="Index" asp-route-page="@(Model.Page - 1)"
+                                   asp-route-categoryId="@Model.CategoryId" asp-route-search="@Model.Search"
+                                   asp-route-woodType="@Model.WoodType" asp-route-minPrice="@Model.MinPrice"
+                                   asp-route-maxPrice="@Model.MaxPrice" asp-route-sort="@Model.Sort">←</a>
+                            </li>
+
+                            @for (var i = 1; i <= Model.TotalPages; i++)
+                            {
+                                if (i == 1 || i == Model.TotalPages || Math.Abs(i - Model.Page) <= 2)
+                                {
+                                    <li class="page-item @(i == Model.Page ? "active" : "")">
+                                        <a class="page-link" asp-action="Index" asp-route-page="@i"
+                                           asp-route-categoryId="@Model.CategoryId" asp-route-search="@Model.Search"
+                                           asp-route-woodType="@Model.WoodType" asp-route-minPrice="@Model.MinPrice"
+                                           asp-route-maxPrice="@Model.MaxPrice" asp-route-sort="@Model.Sort">@i</a>
+                                    </li>
+                                }
+                                else if (Math.Abs(i - Model.Page) == 3)
+                                {
+                                    <li class="page-item disabled"><span class="page-link">…</span></li>
+                                }
+                            }
+
+                            <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                                <a class="page-link" asp-action="Index" asp-route-page="@(Model.Page + 1)"
+                                   asp-route-categoryId="@Model.CategoryId" asp-route-search="@Model.Search"
+                                   asp-route-woodType="@Model.WoodType" asp-route-minPrice="@Model.MinPrice"
+                                   asp-route-maxPrice="@Model.MaxPrice" asp-route-sort="@Model.Sort">→</a>
+                            </li>
+                        </ul>
+                    </nav>
+                }
+            }
+        </div>
+    </div>
+</div>

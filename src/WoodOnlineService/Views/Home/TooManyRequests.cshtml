@@ -1,0 +1,59 @@
+@{
+    ViewData["Title"] = "Too Many Requests";
+}
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-6 mx-auto">
+            <div class="panel">
+                <div class="panel-body text-center py-5">
+                    <div style="font-size:3.5rem;" class="mb-3">&#9203;</div>
+                    <h1 class="mb-3">Slow down a moment</h1>
+                    <p class="text-muted-wood mb-4">
+                        We received too many requests from your connection in a short time.
+                        Please wait about a minute and try again.
+                    </p>
+                    <p class="small text-muted-wood mb-4">
+                        This limit protects the site for everyone. If you believe it has been
+                        applied in error, please contact us.
+                    </p>
+                    <div class="d-flex flex-wrap justify-content-center gap-2">
+                        <button type="button" class="btn btn-wood" id="retryBtn">
+                            Try Again <span id="countdown"></span>
+                        </button>
+                        <a asp-controller="Home" asp-action="Contact" class="btn btn-outline-wood">Contact Us</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var seconds = 60;
+            var button = document.getElementById('retryBtn');
+            var label = document.getElementById('countdown');
+
+            button.disabled = true;
+
+            var timer = setInterval(function () {
+                seconds--;
+                label.textContent = '(' + seconds + 's)';
+
+                if (seconds <= 0) {
+                    clearInterval(timer);
+                    button.disabled = false;
+                    label.textContent = '';
+                }
+            }, 1000);
+
+            label.textContent = '(' + seconds + 's)';
+
+            button.addEventListener('click', function () {
+                window.location.href = document.referrer || '/';
+            });
+        })();
+    </script>
+}

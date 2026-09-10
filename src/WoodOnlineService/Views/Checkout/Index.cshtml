@@ -1,0 +1,237 @@
+@using Microsoft.Extensions.Options
+@model WoodOnlineService.Models.Order
+@inject IOptions<SiteSettings> Site
+@{
+    ViewData["Title"] = "Checkout";
+    var cart = (CartSummary)ViewBag.Cart;
+    var site = Site.Value;
+    var onlineAvailable = ViewBag.OnlinePaymentAvailable as bool? ?? false;
+}
+
+<div class="bg-wood-50 border-bottom border-wood py-4">
+    <div class="container">
+        <h1 class="mb-0">Checkout</h1>
+    </div>
+</div>
+
+<div class="container py-4">
+    <div class="steps">
+        <div class="step done">1. Cart</div>
+        <div class="step active">2. Address &amp; Payment</div>
+        <div class="step">3. Confirmation</div>
+    </div>
+
+    <form asp-action="PlaceOrder" method="post" novalidate data-validate-on-submit>
+        @Html.AntiForgeryToken()
+
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <div class="panel mb-3">
+                    <div class="panel-header">Delivery Address</div>
+                    <div class="panel-body">
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small"></div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label asp-for="ShippingName" class="form-label">Full Name</label>
+                                <span class="text-danger">*</span>
+                                <input asp-for="ShippingName" class="form-control" autocomplete="name"
+                                       data-validate="required|min:2" data-label="Full name" />
+                                <span asp-validation-for="ShippingName" class="field-error"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="ShippingPhone" class="form-label">Phone Number</label>
+                                <span class="text-danger">*</span>
+                                <input asp-for="ShippingPhone" class="form-control" type="tel" autocomplete="tel"
+                                       data-validate="required|phone" data-label="Phone number" />
+                                <span asp-validation-for="ShippingPhone" class="field-error"></span>
+                            </div>
+
+                            <div class="col-12">
+                                <label asp-for="ShippingAddress" class="form-label">Address</label>
+                                <span class="text-danger">*</span>
+                                <textarea asp-for="ShippingAddress" rows="2" class="form-control"
+                                          placeholder="House or flat number, street, area, landmark"
+                                          data-validate="required|min:8" data-label="Address"></textarea>
+                                <span asp-validation-for="ShippingAddress" class="field-error"></span>
+                            </div>
+
+                            <div class="col-md-5">
+                                <label asp-for="ShippingCity" class="form-label">City</label>
+                                <span class="text-danger">*</span>
+                                <input asp-for="ShippingCity" class="form-control" autocomplete="address-level2"
+                                       data-validate="required" data-label="City" />
+                                <span asp-validation-for="ShippingCity" class="field-error"></span>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label asp-for="ShippingState" class="form-label">State</label>
+                                <span class="text-danger">*</span>
+                                <input asp-for="ShippingState" class="form-control" autocomplete="address-level1"
+                                       data-validate="required" data-label="State" />
+                                <span asp-validation-for="ShippingState" class="field-error"></span>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label asp-for="ShippingPinCode" class="form-label">PIN Code</label>
+                                <span class="text-danger">*</span>
+                                <input asp-for="ShippingPinCode" class="form-control" inputmode="numeric"
+                                       maxlength="6" autocomplete="postal-code"
+                                       data-validate="required|pincode" data-label="PIN code" />
+                                <span asp-validation-for="ShippingPinCode" class="field-error"></span>
+                            </div>
+
+                            <div class="col-12">
+                                <label asp-for="Notes" class="form-label">Delivery Notes (optional)</label>
+                                <textarea asp-for="Notes" rows="2" class="form-control" maxlength="500"
+                                          placeholder="Any specific delivery time or directions, please write them here"></textarea>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input type="checkbox" name="saveAddress" value="true" id="saveAddress"
+                                           class="form-check-input" checked />
+                                    <label for="saveAddress" class="form-check-label">
+                                        Save this address to my profile
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">Payment Method</div>
+                    <div class="panel-body">
+                        @if (onlineAvailable)
+                        {
+                            <label class="pay-option is-selected" for="payOnline">
+                                <input class="form-check-input" type="radio" name="PaymentMethod"
+                                       value="@((int)PaymentMethod.Online)" id="payOnline" checked />
+                                <span class="pay-option__title">Pay Online</span>
+                                <div class="pay-option__hint">
+                                    Pay securely using UPI, credit card, debit card, net banking or a wallet.
+                                    You will be redirected to our payment partner to complete the payment.
+                                </div>
+                                <div class="pay-methods">
+                                    <span class="pay-chip">UPI</span>
+                                    <span class="pay-chip">Credit Card</span>
+                                    <span class="pay-chip">Debit Card</span>
+                                    <span class="pay-chip">Net Banking</span>
+                                    <span class="pay-chip">Wallets</span>
+                                </div>
+                            </label>
+                        }
+
+                        @if (!onlineAvailable)
+                        {
+                            @* Online payment is switched off in configuration. Say so, rather than
+                               silently showing a single option and looking broken. *@
+                            <div class="pay-option" style="opacity:.65;cursor:default;">
+                                <span class="pay-option__title">Pay Online (UPI / Card / Net Banking)</span>
+                                <div class="pay-option__hint">
+                                    Online payment is not available right now. Please use Cash on Delivery,
+                                    or contact us and we will arrange a payment link for you.
+                                </div>
+                                <div class="pay-methods">
+                                    <span class="pay-chip">UPI</span>
+                                    <span class="pay-chip">Credit Card</span>
+                                    <span class="pay-chip">Debit Card</span>
+                                    <span class="pay-chip">Net Banking</span>
+                                    <span class="pay-chip">Wallets</span>
+                                </div>
+                            </div>
+                        }
+
+                        <label class="pay-option @(onlineAvailable ? "" : "is-selected")" for="payCod">
+                            <input class="form-check-input" type="radio" name="PaymentMethod"
+                                   value="@((int)PaymentMethod.CashOnDelivery)" id="payCod"
+                                   checked="@(!onlineAvailable)" />
+                            <span class="pay-option__title">Cash on Delivery</span>
+                            <div class="pay-option__hint">
+                                Pay in cash when the furniture reaches your home.
+                                For large orders we call to confirm first.
+                            </div>
+                        </label>
+
+                        <div class="secure-note">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z" />
+                            </svg>
+                            <span>
+                                Your payment is processed on a secure gateway. We never see or store your card details.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="panel" style="position:sticky;top:1rem;">
+                    <div class="panel-header">Your Order</div>
+                    <div class="panel-body">
+                        @foreach (var line in cart.Lines)
+                        {
+                            <div class="d-flex gap-2 mb-3 pb-3 border-bottom">
+                                <img src="@(line.Product.ImageUrl ?? "/img/cat-custom.svg")" alt=""
+                                     style="width:64px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--line);"
+                                     loading="lazy" />
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold" style="font-size:.92rem;line-height:1.3;">@line.Product.Name</div>
+                                    <div class="small text-muted-wood">
+                                        &#8377;@line.Product.Price.ToString("N0") &times; @line.Item.Quantity
+                                    </div>
+                                </div>
+                                <div class="fw-bold text-nowrap">&#8377;@line.LineTotal.ToString("N0")</div>
+                            </div>
+                        }
+
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Subtotal</span>
+                            <span>&#8377;@cart.SubTotal.ToString("N0")</span>
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Delivery</span>
+                            @if (cart.ShippingCharge <= 0)
+                            {
+                                <span class="text-success fw-bold">Free</span>
+                            }
+                            else
+                            {
+                                <span>&#8377;@cart.ShippingCharge.ToString("N0")</span>
+                            }
+                        </div>
+
+                        <hr />
+
+                        <div class="d-flex justify-content-between mb-3">
+                            <span class="fw-bold" style="font-size:1.05rem;">Total</span>
+                            <span class="price">&#8377;@cart.Total.ToString("N0")</span>
+                        </div>
+
+                        <button type="submit" class="btn btn-wood btn-lg w-100"
+                                data-busy-text="Processing your order...">
+                            Place Order
+                        </button>
+
+                        <p class="small text-muted-wood text-center mt-3 mb-0">
+                            After you place the order we will call you to confirm it.
+                            For any questions, call
+                            <a href="tel:@site.Phone.Replace(" ", "")">@site.Phone</a>.
+                        </p>
+                    </div>
+                </div>
+
+                <a asp-controller="Cart" asp-action="Index" class="btn btn-outline-wood w-100 mt-3">
+                    Back to Cart
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

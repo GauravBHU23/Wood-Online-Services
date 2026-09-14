@@ -15,7 +15,7 @@ public class CheckoutController : BaseController
     private readonly ApplicationDbContext _db;
     private readonly ICartService _cart;
     private readonly IOrderService _orders;
-    private readonly IInstamojoService _instamojo;
+    private readonly ICashfreeService _cashfree;
     private readonly INotificationService _notify;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ILogger<CheckoutController> _logger;
@@ -24,7 +24,7 @@ public class CheckoutController : BaseController
         ApplicationDbContext db,
         ICartService cart,
         IOrderService orders,
-        IInstamojoService instamojo,
+        ICashfreeService cashfree,
         INotificationService notify,
         UserManager<ApplicationUser> userManager,
         ILogger<CheckoutController> logger)
@@ -32,7 +32,7 @@ public class CheckoutController : BaseController
         _db = db;
         _cart = cart;
         _orders = orders;
-        _instamojo = instamojo;
+        _cashfree = cashfree;
         _notify = notify;
         _userManager = userManager;
         _logger = logger;
@@ -54,7 +54,7 @@ public class CheckoutController : BaseController
 
         // Live mode with a broken configuration must not advertise online payment, because
         // submitting it would only fail. IsUsable covers both "configured" and "actually works".
-        ViewBag.OnlinePaymentAvailable = _instamojo.IsUsable;
+        ViewBag.OnlinePaymentAvailable = _cashfree.IsUsable;
 
         // Prefill from the saved profile so returning customers barely have to type.
         return View(new Order
@@ -88,7 +88,7 @@ public class CheckoutController : BaseController
         {
             ViewData["Title"] = "Checkout";
             ViewBag.Cart = cart;
-            ViewBag.OnlinePaymentAvailable = _instamojo.IsUsable;
+            ViewBag.OnlinePaymentAvailable = _cashfree.IsUsable;
             return View(nameof(Index), model);
         }
 
@@ -96,7 +96,7 @@ public class CheckoutController : BaseController
         if (user is null) return Challenge();
 
         // Never let a client select online payment when the gateway cannot actually take it.
-        if (model.PaymentMethod == PaymentMethod.Online && !_instamojo.IsUsable)
+        if (model.PaymentMethod == PaymentMethod.Online && !_cashfree.IsUsable)
         {
             TempData["Error"] = "Online payment is unavailable right now. Please choose Cash on Delivery.";
             return RedirectToAction(nameof(Index));
@@ -148,7 +148,7 @@ public class CheckoutController : BaseController
         _db.PaymentTransactions.Add(transaction);
         await _db.SaveChangesAsync();
 
-        var result = await _instamojo.CreatePaymentRequestAsync(
+        var result = await _cashfree.CreatePaymentRequestAsync(
             order,
             order.ShippingName,
             user.Email ?? string.Empty,
@@ -176,19 +176,30 @@ public class CheckoutController : BaseController
         transaction.Status = TransactionStatus.Pending;
         await _db.SaveChangesAsync();
 
-        _logger.LogInformation("Redirecting order {OrderNumber} to Instamojo", order.OrderNumber);
+        if (_cashfree.IsSimulated)
+        {
+            _logger.LogInformation("Redirecting order {OrderNumber} to the simulated gateway", order.OrderNumber);
+            return RedirectToAction(nameof(SimulatedGateway), new { requestId = result.PaymentRequestId });
+        }
 
-        return Redirect(result.PaymentUrl);
+        // Cashfree's hosted checkout is launched by its JS SDK, not a plain HTTP redirect, so the
+        // customer is handed to a thin page that opens it with this payment_session_id.
+        _logger.LogInformation("Handing order {OrderNumber} to Cashfree checkout", order.OrderNumber);
+
+        ViewData["Title"] = "Redirecting to Payment";
+        ViewBag.PaymentSessionId = result.PaymentUrl;
+        ViewBag.ClientId = _cashfree.ClientId;
+        return View("GatewayRedirect");
     }
 
     /// <summary>
-    /// Stand-in for the Instamojo checkout page, used only when payments run in Simulated mode.
+    /// Stand-in for the Cashfree checkout page, used only when payments run in Simulated mode.
     /// It lets the whole flow be exercised locally, where the real gateway cannot reach back.
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> SimulatedGateway(string requestId)
     {
-        if (!_instamojo.IsSimulated) return NotFound();
+        if (!_cashfree.IsSimulated) return NotFound();
 
         var userId = _userManager.GetUserId(User);
 
@@ -216,7 +227,7 @@ public class CheckoutController : BaseController
     [EnableRateLimiting("sensitive")]
     public async Task<IActionResult> SimulatedGateway(string requestId, string outcome, string? method)
     {
-        if (!_instamojo.IsSimulated) return NotFound();
+        if (!_cashfree.IsSimulated) return NotFound();
 
         var user = await _userManager.GetUserAsync(User);
         if (user is null) return Challenge();
@@ -279,19 +290,16 @@ public class CheckoutController : BaseController
     }
 
     /// <summary>
-    /// Where Instamojo sends the customer's browser after payment. This is only a hint —
+    /// Where Cashfree sends the customer's browser after payment. This is only a hint —
     /// the webhook is the authority. We verify with the API before trusting anything here,
     /// because these query values arrive through the customer's own browser.
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> PaymentCallback(
-        [FromQuery] string? payment_id,
-        [FromQuery] string? payment_request_id,
-        [FromQuery] string? payment_status)
+    public async Task<IActionResult> PaymentCallback([FromQuery] string? order_id)
     {
         var userId = _userManager.GetUserId(User);
 
-        if (string.IsNullOrWhiteSpace(payment_request_id))
+        if (string.IsNullOrWhiteSpace(order_id))
         {
             TempData["Error"] = "We could not identify that payment.";
             return RedirectToAction("Index", "Orders");
@@ -300,7 +308,7 @@ public class CheckoutController : BaseController
         var transaction = await _db.PaymentTransactions
             .Include(t => t.Order)
             .ThenInclude(o => o!.Items)
-            .FirstOrDefaultAsync(t => t.PaymentRequestId == payment_request_id);
+            .FirstOrDefaultAsync(t => t.PaymentRequestId == order_id);
 
         if (transaction?.Order is null || transaction.Order.UserId != userId)
         {
@@ -314,13 +322,13 @@ public class CheckoutController : BaseController
         if (transaction.Status == TransactionStatus.Success)
             return RedirectToAction(nameof(Success), new { orderNumber = order.OrderNumber });
 
-        // Ask Instamojo directly rather than trusting the query string.
-        var status = await _instamojo.GetPaymentStatusAsync(payment_request_id);
+        // Ask Cashfree directly rather than trusting the query string.
+        var status = await _cashfree.GetPaymentStatusAsync(order_id);
 
         if (status.Success && status.Status == TransactionStatus.Success)
         {
             transaction.Status = TransactionStatus.Success;
-            transaction.PaymentId = status.PaymentId ?? payment_id;
+            transaction.PaymentId = status.PaymentId;
             transaction.PaymentMethod = status.PaymentMethod;
             transaction.CompletedDate = DateTime.UtcNow;
             transaction.GatewayResponse = status.RawResponse;
@@ -349,7 +357,7 @@ public class CheckoutController : BaseController
         }
 
         transaction.Status = TransactionStatus.Failed;
-        transaction.FailureReason = status.FailureReason ?? payment_status ?? "Payment was not completed.";
+        transaction.FailureReason = status.FailureReason ?? "Payment was not completed.";
         transaction.CompletedDate = DateTime.UtcNow;
         order.PaymentStatus = PaymentStatus.Failed;
         await _db.SaveChangesAsync();
@@ -394,7 +402,7 @@ public class CheckoutController : BaseController
             return RedirectToAction("Details", "Orders", new { id = orderId });
         }
 
-        if (!_instamojo.IsUsable)
+        if (!_cashfree.IsUsable)
         {
             TempData["Error"] = "Online payment is unavailable right now. Please contact us to complete this order.";
             return RedirectToAction("Details", "Orders", new { id = orderId });

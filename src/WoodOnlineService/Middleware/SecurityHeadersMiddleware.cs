@@ -32,19 +32,23 @@ public class SecurityHeadersMiddleware
         headers.Remove("X-AspNetMvc-Version");
 
         // 'unsafe-inline' is required because the views carry inline handlers and styles.
-        // frame-src allows the Instamojo checkout window and the Google Maps embed. The maps
-        // URL redirects from maps.google.com to www.google.com/maps/embed, and CSP is applied
-        // to the final URL, so both hosts have to be permitted - hence the wildcard.
-        // img-src data: covers the inlined SVG icons.
+        // script-src allows Cashfree's checkout SDK, which the payment redirect page loads to
+        // launch the hosted checkout drop-in. The SDK itself submits a form to
+        // api.cashfree.com/pg/view/sessions/checkout (not payments.cashfree.com, despite that
+        // being the customer-facing host once the session opens), so form-action has to allow
+        // both. frame-src/connect-src allow that same checkout window and its API calls, plus
+        // the Google Maps embed. The maps URL redirects from maps.google.com to
+        // www.google.com/maps/embed, and CSP is applied to the final URL, so both hosts have to
+        // be permitted - hence the wildcard. img-src data: covers the inlined SVG icons.
         var csp = string.Join("; ",
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline'",
+            "script-src 'self' 'unsafe-inline' https://sdk.cashfree.com",
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data: https:",
             "font-src 'self' data:",
-            "connect-src 'self'",
-            "frame-src 'self' https://www.instamojo.com https://test.instamojo.com https://*.google.com https://*.google.co.in",
-            "form-action 'self' https://www.instamojo.com https://test.instamojo.com",
+            "connect-src 'self' https://api.cashfree.com https://sandbox.cashfree.com",
+            "frame-src 'self' https://payments.cashfree.com https://sdk.cashfree.com https://api.cashfree.com https://*.google.com https://*.google.co.in",
+            "form-action 'self' https://payments.cashfree.com https://api.cashfree.com https://sandbox.cashfree.com",
             "frame-ancestors 'none'",
             "base-uri 'self'",
             "object-src 'none'");

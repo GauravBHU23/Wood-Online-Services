@@ -1,0 +1,62 @@
+@{
+    ViewData["Title"] = "Redirecting to Payment";
+    var sessionId = ViewBag.PaymentSessionId as string ?? string.Empty;
+}
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-6 mx-auto text-center">
+            <div class="panel">
+                <div class="panel-body py-5">
+                    <div class="spinner-border text-wood mb-4" role="status" style="width:3rem;height:3rem;">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h5 class="mb-2">Redirecting you to our payment partner</h5>
+                    <p class="text-muted-wood mb-4">
+                        Please do not close this window. You will be taken to a secure payment page.
+                    </p>
+                    <div id="gatewayError" class="alert alert-danger d-none text-start" role="alert"></div>
+                    <noscript>
+                        <div class="alert alert-warning text-start">
+                            JavaScript is required to complete online payment. Please enable it, or
+                            <a asp-controller="Orders" asp-action="Index">go to your orders</a> to retry
+                            with Cash on Delivery.
+                        </div>
+                    </noscript>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+    <script>
+        (function () {
+            var sessionId = @Html.Raw(Json.Serialize(sessionId));
+
+            if (!sessionId || typeof Cashfree === "undefined") {
+                showError("We could not start the payment page. Please try again from your orders page.");
+                return;
+            }
+
+            try {
+                var cashfree = Cashfree({ mode: "production" });
+                cashfree.checkout({
+                    paymentSessionId: sessionId,
+                    redirectTarget: "_self"
+                });
+            } catch (e) {
+                showError("We could not start the payment page. Please try again from your orders page.");
+            }
+
+            function showError(message) {
+                var box = document.getElementById("gatewayError");
+                if (box) {
+                    box.textContent = message;
+                    box.classList.remove("d-none");
+                }
+            }
+        })();
+    </script>
+}

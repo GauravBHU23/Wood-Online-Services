@@ -92,25 +92,26 @@ the same engine as production), change it to:
 
 ## Payments
 
-Online payments run through **Instamojo**. The integration covers UPI, credit card, debit card, net banking and wallets.
+Online payments run through **Cashfree Payments** (PG API). The integration covers UPI, credit card, debit card, net banking and wallets through Cashfree's hosted checkout.
 
 ### How it works
 
 1. The customer places an order → an `Order` and a `PaymentTransaction` row are created
-2. We call Instamojo to create a payment request and redirect the customer to it
-3. Instamojo calls our **webhook** (`POST /api/payment/webhook`) when the payment settles
-4. The webhook signature is verified with **HMAC-SHA1** against the account salt before anything is written
-5. On success the order is marked paid and confirmed; confirmation emails go to the customer and to you
+2. We call Cashfree to create an order and get back a `payment_session_id`
+3. The customer is handed to a thin redirect page that launches Cashfree's hosted checkout with that session id (Cashfree's checkout is opened by its JS SDK, not a plain HTTP redirect)
+4. Cashfree calls our **webhook** (`POST /api/payment/webhook`) when the payment settles
+5. The webhook signature is verified — **Base64(HMAC-SHA256(timestamp + raw body, client secret))** — against the `x-webhook-signature` / `x-webhook-timestamp` headers before anything is written
+6. On success the order is marked paid and confirmed; confirmation emails go to the customer and to you
 
-The browser redirect (`/Checkout/PaymentCallback`) is treated only as a hint — we always re-query Instamojo's API before trusting it, because those query values arrive through the customer's own browser.
+The browser redirect (`/Checkout/PaymentCallback`) is treated only as a hint — we always re-query Cashfree's API before trusting it, because those query values arrive through the customer's own browser.
 
 ### Configuration
 
-Payment behaviour is controlled by one setting, `Instamojo:Mode`:
+Payment behaviour is controlled by one setting, `Cashfree:Mode`:
 
 | Mode | What happens |
 |---|---|
-| `Live` | Real Instamojo. Real money. Needs the three keys **and** a public HTTPS `SiteBaseUrl`. |
+| `Live` | Real Cashfree. Real money. Needs `ClientId` + `ClientSecret` **and** a public HTTPS `SiteBaseUrl`. |
 | `Simulated` | A local stand-in gateway page. Full flow, no money, no public URL needed. For local walkthroughs. |
 | `Disabled` | Checkout offers Cash on Delivery only. |
 
@@ -118,31 +119,31 @@ Real keys go in `appsettings.Production.json` (gitignored) or Azure App Settings
 `appsettings.json`:
 
 ```json
-"Instamojo": {
+"Cashfree": {
   "Mode": "Live",
-  "ApiKey": "your-api-key",
-  "AuthToken": "your-auth-token",
-  "Salt": "your-private-salt",
-  "BaseUrl": "https://www.instamojo.com/api/1.1/",
+  "ClientId": "your-client-id",
+  "ClientSecret": "your-client-secret",
+  "BaseUrl": "https://api.cashfree.com/pg",
+  "ApiVersion": "2026-01-01",
   "SiteBaseUrl": "https://your-domain.com"
 }
 ```
 
 ### `SiteBaseUrl` must be a public HTTPS domain
 
-This is the single most common reason online payment "does not work". Instamojo builds two
+This is the single most common reason online payment "does not work". Cashfree builds two
 URLs from it and calls them **from its own servers**:
 
 - `{SiteBaseUrl}/Checkout/PaymentCallback` — where the customer's browser returns
 - `{SiteBaseUrl}/api/payment/webhook` — where the payment result is delivered
 
-`http://localhost:5199` is only reachable from your own machine, so Instamojo can never deliver
+`http://localhost:5199` is only reachable from your own machine, so Cashfree can never deliver
 the webhook and a payment would be taken but never confirmed. The app detects this and **refuses
 to start the payment**, logging:
 
 ```
 Online payment is set to Live but is not usable.
-Instamojo:SiteBaseUrl points at localhost, which Instamojo cannot reach.
+Cashfree:SiteBaseUrl points at localhost, which Cashfree cannot reach.
 ```
 
 The order is still saved with stock reserved, and the customer sees a Retry Payment button —
@@ -152,7 +153,7 @@ nothing is charged.
 
 ### Testing real payments on your own machine
 
-Instamojo has to reach your computer from the public internet to deliver the webhook, so a
+Cashfree has to reach your computer from the public internet to deliver the webhook, so a
 tunnel is needed. One command does the whole thing:
 
 ```powershell
@@ -172,7 +173,7 @@ Invoke-WebRequest "https://github.com/cloudflare/cloudflared/releases/latest/dow
 # each session
 .\tools\cloudflared.exe tunnel --url http://localhost:5199
 # copy the https://....trycloudflare.com URL it prints into BOTH
-# Instamojo:SiteBaseUrl and SiteSettings:SiteBaseUrl, then run the app
+# Cashfree:SiteBaseUrl and SiteSettings:SiteBaseUrl, then run the app
 ```
 
 Verify the tunnel actually exposes the webhook — a `400` is the correct answer here, it means
@@ -182,25 +183,26 @@ the endpoint was reached and rejected an unsigned request:
 curl -X POST https://YOUR-TUNNEL.trycloudflare.com/api/payment/webhook -d "x=1"
 ```
 
-> **This charges real money.** There is no sandbox on a live account. Test with a ₹1 product
-> and refund it from the Instamojo dashboard; the gateway fee is not refundable. For free
-> testing set `"Mode": "Simulated"` instead — the full flow runs with a local stand-in page.
+> **This charges real money.** There is no sandbox on these keys unless you switch to a
+> separate Cashfree test account. Test with a low-value product and refund it from the
+> Cashfree dashboard; the gateway fee is not refundable. For free testing set
+> `"Mode": "Simulated"` instead — the full flow runs with a local stand-in page.
 
 ### Going live checklist
 
 1. Deploy to Azure App Service and bind your domain with HTTPS
 2. In **Configuration → Application settings** add:
-   - `Instamojo__Mode` = `Live`
-   - `Instamojo__ApiKey`, `Instamojo__AuthToken`, `Instamojo__Salt`
-   - `Instamojo__SiteBaseUrl` = `https://your-domain.com`
+   - `Cashfree__Mode` = `Live`
+   - `Cashfree__ClientId`, `Cashfree__ClientSecret`
+   - `Cashfree__SiteBaseUrl` = `https://your-domain.com`
    - `SiteSettings__SiteBaseUrl` = the same value
-3. Place one order for a ₹1 test product, pay it, confirm the order flips to **Paid**
-4. Refund it from your Instamojo dashboard (the gateway fee is not refundable)
+3. In the Cashfree dashboard, whitelist your production domain for checkout and point the webhook at `{SiteBaseUrl}/api/payment/webhook`
+4. Place one order for a low-value test product, pay it, confirm the order flips to **Paid**
+5. Refund it from your Cashfree dashboard (the gateway fee is not refundable)
 
-> **These are live keys — every payment moves real money.** There is no separate sandbox on a
-> live account. If you want a free sandbox, create an account on `test.instamojo.com`, use the
-> keys it issues, and set `BaseUrl` to `https://test.instamojo.com/api/1.1/`. Live and test keys
-> are not interchangeable.
+> **These are live keys — every payment moves real money.** If you want a free sandbox, create
+> a Cashfree test account, use the keys it issues, and set `BaseUrl` to
+> `https://sandbox.cashfree.com/pg`. Live and test keys are not interchangeable.
 
 ---
 
@@ -319,7 +321,7 @@ src/WoodOnlineService/
 │   └── SecurityHeadersMiddleware.cs
 ├── Models/
 ├── Services/
-│   ├── InstamojoService.cs   Payment requests, status checks, HMAC verification
+│   ├── CashfreeService.cs    Payment requests, status checks, HMAC verification
 │   ├── NotificationService.cs
 │   ├── EmailTemplates.cs
 │   ├── ReviewService.cs
@@ -371,8 +373,8 @@ Azure **App Settings**:
 ```
 ASPNETCORE_ENVIRONMENT, DatabaseProvider, ConnectionStrings__DefaultConnection,
 AdminUser__Email, AdminUser__Password,
-Instamojo__Mode, Instamojo__ApiKey, Instamojo__AuthToken, Instamojo__Salt,
-Instamojo__SiteBaseUrl, SiteSettings__SiteBaseUrl, Security__RequireHttps
+Cashfree__Mode, Cashfree__ClientId, Cashfree__ClientSecret,
+Cashfree__SiteBaseUrl, SiteSettings__SiteBaseUrl, Security__RequireHttps
 ```
 
 View or change them with:
@@ -383,9 +385,9 @@ az webapp config appsettings list --name woodonlineservice --resource-group rg-w
 
 ### The free tier sleeps
 
-F1 idles out after about 20 minutes, and a sleeping app can miss the Instamojo webhook — the
+F1 idles out after about 20 minutes, and a sleeping app can miss the Cashfree webhook — the
 customer would have paid while the order still said Pending. `PaymentReconciliationService`
-covers this: every five minutes it asks Instamojo about pending payments and settles any the
+covers this: every five minutes it asks Cashfree about pending payments and settles any the
 webhook missed, sending the confirmation emails that never went out.
 
 That is a safety net, not a substitute. For a real shop, move to **B1 (~$13/month)**, which never
@@ -456,11 +458,10 @@ Set these in **Configuration → Application settings**, not in a committed file
 | `ConnectionStrings__DefaultConnection` | your Azure SQL string |
 | `AdminUser__Email` | your admin email |
 | `AdminUser__Password` | a strong password |
-| `Instamojo__Enabled` | `true` |
-| `Instamojo__ApiKey` | your API key |
-| `Instamojo__AuthToken` | your auth token |
-| `Instamojo__Salt` | your private salt |
-| `Instamojo__SiteBaseUrl` | `https://your-domain.com` |
+| `Cashfree__Mode` | `Live` |
+| `Cashfree__ClientId` | your client id |
+| `Cashfree__ClientSecret` | your client secret |
+| `Cashfree__SiteBaseUrl` | `https://your-domain.com` |
 | `Smtp__Enabled` | `true` |
 | `Smtp__UserName` | your email |
 | `Smtp__Password` | your app password |
@@ -481,7 +482,7 @@ Product images are written to `wwwroot/uploads`. On App Service this lives on pe
 ### Go-live checklist
 
 - [ ] Admin password changed from the default
-- [ ] Instamojo keys set in App Settings, tested with a ₹1 order
+- [ ] Cashfree keys set in App Settings, tested with a low-value order
 - [ ] Webhook reachable at `https://your-domain.com/api/payment/webhook`
 - [ ] SMTP configured and a test email received
 - [ ] `SiteSettings` updated with the real phone, WhatsApp, address and hours
@@ -580,7 +581,7 @@ dotnet ef migrations add YourChangeName
 | Database | Azure SQL Database (SQL Server) |
 | ORM | Entity Framework Core 8 |
 | Auth | ASP.NET Core Identity, role-based |
-| Payments | Instamojo (UPI, cards, net banking, wallets) |
+| Payments | Cashfree Payments (UPI, cards, net banking, wallets) |
 | Email | SMTP with responsive HTML templates |
 | UI | Bootstrap 5 with a custom wood theme |
 | PWA | Service worker, manifest, offline support |

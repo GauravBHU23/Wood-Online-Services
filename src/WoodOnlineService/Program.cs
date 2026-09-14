@@ -19,7 +19,7 @@ builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
 // ---------------------------------------------------------------- configuration
 builder.Services.Configure<SiteSettings>(builder.Configuration.GetSection("SiteSettings"));
 builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
-builder.Services.Configure<InstamojoSettings>(builder.Configuration.GetSection("Instamojo"));
+builder.Services.Configure<CashfreeSettings>(builder.Configuration.GetSection("Cashfree"));
 builder.Services.Configure<SecuritySettings>(builder.Configuration.GetSection("Security"));
 builder.Services.Configure<FeatureSettings>(builder.Configuration.GetSection("Features"));
 
@@ -190,7 +190,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 builder.Services.AddHttpClient("geo");
-builder.Services.AddHttpClient<IInstamojoService, InstamojoService>();
+builder.Services.AddHttpClient<ICashfreeService, CashfreeService>();
 
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ICartService, CartService>();

@@ -7,39 +7,38 @@ public enum PaymentMode
 
     /// <summary>
     /// Local gateway stand-in. Exercises the whole flow — payment record, redirect, callback,
-    /// order confirmation, emails — without contacting Instamojo and without moving money.
-    /// Instamojo cannot reach localhost, so this is the only way to test the flow on a workstation.
+    /// order confirmation, emails — without contacting Cashfree and without moving money.
+    /// Cashfree cannot reach localhost, so this is the only way to test the flow on a workstation.
     /// </summary>
     Simulated = 1,
 
-    /// <summary>Real Instamojo. Requires public HTTPS so the gateway can deliver its webhook.</summary>
+    /// <summary>Real Cashfree. Requires public HTTPS so the gateway can deliver its webhook.</summary>
     Live = 2
 }
 
 /// <summary>
-/// Instamojo credentials. Keep real keys out of source control — put them in
+/// Cashfree Payment Gateway credentials. Keep real keys out of source control — put them in
 /// appsettings.Production.json, Azure App Settings, or environment variables.
 /// </summary>
-public class InstamojoSettings
+public class CashfreeSettings
 {
     /// <summary>Disabled, Simulated or Live. See <see cref="PaymentMode"/>.</summary>
     public PaymentMode Mode { get; set; } = PaymentMode.Disabled;
 
-    public string ApiKey { get; set; } = string.Empty;
-    public string AuthToken { get; set; } = string.Empty;
+    /// <summary>x-client-id, from Cashfree Merchant Dashboard → Developers → API Keys.</summary>
+    public string ClientId { get; set; } = string.Empty;
 
-    /// <summary>Used to verify the webhook HMAC so a forged callback cannot mark an order paid.</summary>
-    public string Salt { get; set; } = string.Empty;
+    /// <summary>x-client-secret. Also the key used to verify webhook signatures.</summary>
+    public string ClientSecret { get; set; } = string.Empty;
 
-    /// <summary>https://www.instamojo.com/api/1.1/ for live, https://test.instamojo.com/api/1.1/ for test.</summary>
-    public string BaseUrl { get; set; } = "https://www.instamojo.com/api/1.1/";
+    /// <summary>https://api.cashfree.com/pg for production, https://sandbox.cashfree.com/pg for test.</summary>
+    public string BaseUrl { get; set; } = "https://api.cashfree.com/pg";
 
-    /// <summary>Public origin used to build redirect and webhook URLs, e.g. https://woodonline.azurewebsites.net</summary>
+    /// <summary>Pinned Cashfree API contract version sent as the x-api-version header.</summary>
+    public string ApiVersion { get; set; } = "2026-01-01";
+
+    /// <summary>Public origin used to build the return and webhook (notify) URLs, e.g. https://woodonline.azurewebsites.net</summary>
     public string SiteBaseUrl { get; set; } = string.Empty;
-
-    public bool AllowRepeatedPayments { get; set; }
-    public bool SendSms { get; set; }
-    public bool SendEmail { get; set; } = true;
 
     public bool IsSimulated => Mode == PaymentMode.Simulated;
 
@@ -47,9 +46,8 @@ public class InstamojoSettings
     public bool IsConfigured =>
         Mode == PaymentMode.Simulated ||
         (Mode == PaymentMode.Live &&
-         !string.IsNullOrWhiteSpace(ApiKey) &&
-         !string.IsNullOrWhiteSpace(AuthToken) &&
-         !string.IsNullOrWhiteSpace(Salt));
+         !string.IsNullOrWhiteSpace(ClientId) &&
+         !string.IsNullOrWhiteSpace(ClientSecret));
 
     /// <summary>Explains why live mode is not usable, or null when it is fine.</summary>
     public string? LiveConfigurationProblem
@@ -59,19 +57,18 @@ public class InstamojoSettings
             if (Mode != PaymentMode.Live) return null;
 
             var missing = new List<string>();
-            if (string.IsNullOrWhiteSpace(ApiKey)) missing.Add("ApiKey");
-            if (string.IsNullOrWhiteSpace(AuthToken)) missing.Add("AuthToken");
-            if (string.IsNullOrWhiteSpace(Salt)) missing.Add("Salt");
-            if (missing.Count > 0) return "Missing Instamojo " + string.Join(", ", missing) + ".";
+            if (string.IsNullOrWhiteSpace(ClientId)) missing.Add("ClientId");
+            if (string.IsNullOrWhiteSpace(ClientSecret)) missing.Add("ClientSecret");
+            if (missing.Count > 0) return "Missing Cashfree " + string.Join(", ", missing) + ".";
 
             if (string.IsNullOrWhiteSpace(SiteBaseUrl))
-                return "Instamojo:SiteBaseUrl is not set.";
+                return "Cashfree:SiteBaseUrl is not set.";
 
             // The gateway calls these URLs from the public internet.
             if (SiteBaseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase) ||
                 SiteBaseUrl.Contains("127.0.0.1", StringComparison.Ordinal))
             {
-                return "Instamojo:SiteBaseUrl points at localhost, which Instamojo cannot reach. " +
+                return "Cashfree:SiteBaseUrl points at localhost, which Cashfree cannot reach. " +
                        "Use Simulated mode locally, or deploy behind a public HTTPS domain.";
             }
 

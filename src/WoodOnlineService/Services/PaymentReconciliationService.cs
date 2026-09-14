@@ -12,7 +12,7 @@ namespace WoodOnlineService.Services;
 /// that happens the customer has paid but the order still says Pending, which is the worst
 /// possible state to leave someone in.
 ///
-/// This walks pending transactions and asks Instamojo what actually happened, so the order
+/// This walks pending transactions and asks Cashfree what actually happened, so the order
 /// self-corrects without anyone having to notice.
 /// </summary>
 public class PaymentReconciliationService : BackgroundService
@@ -67,10 +67,10 @@ public class PaymentReconciliationService : BackgroundService
     {
         using var scope = _services.CreateScope();
 
-        var instamojo = scope.ServiceProvider.GetRequiredService<IInstamojoService>();
+        var cashfree = scope.ServiceProvider.GetRequiredService<ICashfreeService>();
 
         // Nothing to reconcile when the gateway is off or simulated.
-        if (!instamojo.IsUsable || instamojo.IsSimulated) return;
+        if (!cashfree.IsUsable || cashfree.IsSimulated) return;
 
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var notify = scope.ServiceProvider.GetRequiredService<INotificationService>();
@@ -96,9 +96,9 @@ public class PaymentReconciliationService : BackgroundService
             if (ct.IsCancellationRequested) break;
             if (transaction.Order is null) continue;
 
-            var status = await instamojo.GetPaymentStatusAsync(transaction.PaymentRequestId!, ct);
+            var status = await cashfree.GetPaymentStatusAsync(transaction.PaymentRequestId!, ct);
 
-            // A failed lookup means we could not reach Instamojo; leave it pending and retry later.
+            // A failed lookup means we could not reach Cashfree; leave it pending and retry later.
             if (!status.Success) continue;
 
             if (status.Status == TransactionStatus.Success)

@@ -29,18 +29,18 @@
     "ModerateReviews": false
   },
 
-  "//Instamojo": "Simulated is the safe default: full payment flow, no money, no public URL. To test the real gateway locally, run tools/cloudflared.exe (see README) and switch to the Live block below.",
-  "Instamojo": {
+  "//Cashfree": "Simulated is the safe default: full payment flow, no money, no public URL. To test the real gateway locally, run tools/cloudflared.exe (see README) and switch to the Live block below.",
+  "Cashfree": {
     "Mode": "Simulated",
     "SiteBaseUrl": "http://localhost:5199"
   },
 
-  "//Instamojo-Live-Example": {
+  "//Cashfree-Live-Example": {
     "Mode": "Live",
-    "ApiKey": "your-api-key",
-    "AuthToken": "your-auth-token",
-    "Salt": "your-private-salt",
-    "BaseUrl": "https://www.instamojo.com/api/1.1/",
+    "ClientId": "your-client-id",
+    "ClientSecret": "your-client-secret",
+    "BaseUrl": "https://api.cashfree.com/pg",
+    "ApiVersion": "2026-01-01",
     "SiteBaseUrl": "https://your-tunnel-url.trycloudflare.com"
   }
 }

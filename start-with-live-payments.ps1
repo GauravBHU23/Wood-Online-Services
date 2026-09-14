@@ -1,14 +1,14 @@
 <#
-    Runs the site locally with REAL Instamojo payments.
+    Runs the site locally with REAL Cashfree payments.
 
-    Instamojo has to reach this machine from the public internet to deliver the payment
+    Cashfree has to reach this machine from the public internet to deliver the payment
     webhook, so this script opens a Cloudflare tunnel first, writes the resulting public
     URL into appsettings.Development.json, and only then starts the app.
 
     The tunnel URL is different on every run, which is why the config is rewritten each time.
 
     WARNING: this is Live mode. Every payment moves real money. Refund test payments from
-    the Instamojo dashboard (the gateway fee is not refundable). For free testing, run the
+    the Cashfree dashboard (the gateway fee is not refundable). For free testing, run the
     app normally with "Mode": "Simulated".
 
     Usage:  .\start-with-live-payments.ps1
@@ -70,20 +70,20 @@ Write-Host "  Public URL: $publicUrl`n" -ForegroundColor Green
 Write-Host "Updating appsettings.Development.json..." -NoNewline
 
 $config = Get-Content $configPath -Raw | ConvertFrom-Json
-$config.Instamojo.SiteBaseUrl  = $publicUrl
+$config.Cashfree.SiteBaseUrl  = $publicUrl
 $config.SiteSettings.SiteBaseUrl = $publicUrl
 
-if ($config.Instamojo.Mode -ne "Live") {
-    Write-Host "`n  Mode is '$($config.Instamojo.Mode)'. Switching to Live." -ForegroundColor Yellow
-    $config.Instamojo.Mode = "Live"
+if ($config.Cashfree.Mode -ne "Live") {
+    Write-Host "`n  Mode is '$($config.Cashfree.Mode)'. Switching to Live." -ForegroundColor Yellow
+    $config.Cashfree.Mode = "Live"
 }
 
 $config | ConvertTo-Json -Depth 10 | Set-Content $configPath -Encoding utf8
 Write-Host " done" -ForegroundColor Green
 
-if ([string]::IsNullOrWhiteSpace($config.Instamojo.ApiKey)) {
-    Write-Host "`n  Instamojo keys are missing from appsettings.Development.json." -ForegroundColor Red
-    Write-Host "  Add ApiKey, AuthToken and Salt, then run this script again." -ForegroundColor Red
+if ([string]::IsNullOrWhiteSpace($config.Cashfree.ClientId)) {
+    Write-Host "`n  Cashfree keys are missing from appsettings.Development.json." -ForegroundColor Red
+    Write-Host "  Add ClientId and ClientSecret, then run this script again." -ForegroundColor Red
     Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue | Stop-Process -Force
     exit 1
 }
@@ -94,7 +94,7 @@ Write-Host "  Local  : $appUrl"
 Write-Host "  Public : $publicUrl"
 Write-Host "  Admin  : $appUrl/Admin/Dashboard"
 Write-Host ""
-Write-Host "  LIVE MODE - payments charge real money. Refund test payments from Instamojo." -ForegroundColor Yellow
+Write-Host "  LIVE MODE - payments charge real money. Refund test payments from Cashfree." -ForegroundColor Yellow
 Write-Host "  Keep this window open; closing it drops the tunnel and payments stop confirming." -ForegroundColor Yellow
 Write-Host ""
 

@@ -24,11 +24,11 @@ public class PaymentTransaction
     public int OrderId { get; set; }
     public Order? Order { get; set; }
 
-    /// <summary>Instamojo's payment request id (the link we created).</summary>
+    /// <summary>The gateway's order id for this attempt (Cashfree's cf_order_id / our order_id).</summary>
     [StringLength(100)]
     public string? PaymentRequestId { get; set; }
 
-    /// <summary>Instamojo's payment id (the actual money movement).</summary>
+    /// <summary>The gateway's payment id for the settled attempt (Cashfree's cf_payment_id).</summary>
     [StringLength(100)]
     public string? PaymentId { get; set; }
 
@@ -47,6 +47,10 @@ public class PaymentTransaction
     [StringLength(500)]
     public string? FailureReason { get; set; }
 
+    /// <summary>
+    /// Cashfree's payment_session_id, used by the client SDK to launch the hosted checkout.
+    /// Named PaymentUrl for schema continuity with the previous gateway; it is not itself a URL.
+    /// </summary>
     [StringLength(300)]
     public string? PaymentUrl { get; set; }
 

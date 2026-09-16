@@ -22,7 +22,7 @@
                         <div class="fw-bold" style="font-size:1.2rem;color:var(--wood-900);">@Model.OrderNumber</div>
                     </div>
                     <p class="small text-muted-wood mb-0">
-                        Hum jaldi hi aapko <strong>@Model.ShippingPhone</strong> par call karke order confirm karenge.
+                        We will call you shortly on <strong>@Model.ShippingPhone</strong> to confirm your order.
                     </p>
                 </div>
             </div>
@@ -97,11 +97,11 @@
                             <p class="mb-0 small text-muted-wood">
                                 @if (Model.PaymentMethod == PaymentMethod.CashOnDelivery)
                                 {
-                                    <text>Saman ghar pahunchne par ₹@Model.TotalAmount.ToString("N0") is payable.</text>
+                                    <text>₹@Model.TotalAmount.ToString("N0") is payable when the order is delivered.</text>
                                 }
                                 else
                                 {
-                                    <text>Payment mil gaya hai.</text>
+                                    <text>Payment has been received.</text>
                                 }
                             </p>
                         </div>
@@ -118,8 +118,8 @@
             </div>
 
             <p class="text-center small text-muted-wood mt-4">
-                If you need help, call <a href="tel:@site.Phone.Replace(" ", "")">@site.Phone</a> 
-                ya <a href="https://wa.me/@site.WhatsAppNumber" target="_blank" rel="noopener">WhatsApp</a> .
+                If you need help, call <a href="tel:@site.Phone.Replace(" ", "")">@site.Phone</a>
+                or <a href="https://wa.me/@site.WhatsAppNumber" target="_blank" rel="noopener">WhatsApp</a>.
             </p>
         </div>
     </div>

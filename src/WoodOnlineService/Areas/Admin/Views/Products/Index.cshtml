@@ -30,7 +30,7 @@
                 </select>
             </div>
             <div class="col-md-3 d-flex gap-2">
-                <button type="submit" class="btn btn-wood flex-grow-1">Filter</button>
+                <button type="submit" class="btn btn-wood flex-grow-1" data-busy-text="Filtering...">Filter</button>
                 @if (!string.IsNullOrWhiteSpace(Model.Search) || Model.CategoryId is not null)
                 {
                     <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
@@ -127,15 +127,15 @@
                                     }
                                 </div>
                             </td>
-                            <td class="text-end">
-                                <div class="d-flex gap-1 justify-content-end">
+                            <td class="text-end" style="min-width:180px;">
+                                <div class="d-flex gap-1 justify-content-end flex-wrap">
                                     <a asp-area="" asp-controller="Shop" asp-action="Details" asp-route-id="@p.ProductId"
                                        target="_blank" class="btn btn-sm btn-outline-wood" title="View on site">👁</a>
 
                                     <form asp-action="ToggleFeatured" asp-route-id="@p.ProductId" method="post">
                                         @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-wood"
-                                                title="@(p.IsFeatured ? "Homepage se hatayein" : "Show on homepage")">
+                                        <button type="submit" class="btn btn-sm btn-outline-wood" data-busy-text="..."
+                                                title="@(p.IsFeatured ? "Remove from homepage" : "Show on homepage")">
                                             @(p.IsFeatured ? "★" : "☆")
                                         </button>
                                     </form>
@@ -143,9 +143,10 @@
                                     <a asp-action="Edit" asp-route-id="@p.ProductId" class="btn btn-sm btn-outline-wood">Edit</a>
 
                                     <form asp-action="Delete" asp-route-id="@p.ProductId" method="post"
-                                          onsubmit="return confirm('&quot;@p.Name&quot; Delete this?');">
+                                          data-confirm="&quot;@p.Name&quot; will be permanently deleted. Continue?"
+                                          data-confirm-title="Delete product">
                                         @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">✕</button>
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" data-busy-text="...">✕</button>
                                     </form>
                                 </div>
                             </td>

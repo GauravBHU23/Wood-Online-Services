@@ -13,6 +13,11 @@
     var isAdmin = isSignedIn && User.IsInRole(Roles.Admin);
     var currentUser = isSignedIn ? await UserManager.GetUserAsync(User) : null;
     var year = DateTime.Now.Year;
+
+    // The DLL's own write time doubles as "when this build was deployed" — it changes on every
+    // publish with no extra file or config to keep in sync.
+    var lastUpdated = System.IO.File.GetLastWriteTime(
+        System.Reflection.Assembly.GetExecutingAssembly().Location);
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -66,11 +71,32 @@
                     <img src="~/img/logo.svg" alt="@site.ShopName" width="340" height="64" />
                 </a>
 
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false"
-                        aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
+                <div class="d-flex align-items-center gap-2 order-lg-2">
+                    <button class="mobile-search-toggle d-lg-none" type="button"
+                            id="mobileSearchToggle" aria-label="Search" aria-expanded="false"
+                            aria-controls="mobileSearchBar">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="11" cy="11" r="7"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </button>
+
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false"
+                            aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                </div>
+
+                <div class="mobile-search-bar d-lg-none w-100" id="mobileSearchBar" hidden>
+                    <label for="mobileSiteSearch" class="visually-hidden">Search products</label>
+                    <input type="search" id="mobileSiteSearch" class="form-control"
+                           placeholder="Search products..." autocomplete="off"
+                           aria-label="Search products" aria-controls="mobileSearchResults" />
+                    <div id="mobileSearchResults" class="search-results" role="listbox"
+                         aria-label="Search suggestions"></div>
+                </div>
 
                 <div class="collapse navbar-collapse" id="mainNav">
                     <ul class="navbar-nav me-auto mb-2 mb-lg-0">
@@ -80,7 +106,7 @@
                         <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Contact">Contact</a></li>
                     </ul>
 
-                    <div class="search-wrap me-lg-3 my-2 my-lg-0" style="min-width:230px;">
+                    <div class="search-wrap me-lg-3 my-2 my-lg-0 d-none d-lg-block" style="min-width:230px;">
                         <label for="siteSearch" class="visually-hidden">Search products</label>
                         <input type="search" id="siteSearch" class="form-control form-control-sm"
                                placeholder="Search products..." autocomplete="off"
@@ -158,6 +184,11 @@
     {
         <div data-flash="info" hidden>@infoMessage</div>
     }
+    @if (TempData["ShowFeedbackPrompt"] is true)
+    {
+        <div id="feedbackPromptTrigger" hidden></div>
+        <partial name="_FeedbackPrompt" />
+    }
 
     <main id="mainContent">
         @RenderBody()
@@ -218,16 +249,16 @@
             {
                 <div class="text-center mt-4">
                     <div id="visitorBadge" class="visitor-badge d-none">
-                        <span class="visitor-badge__dot" aria-hidden="true"></span>
-                        <span>Visitors: <span class="js-visitor-count visitor-badge__value">-</span></span>
-                        <span class="d-none d-sm-inline">&middot;</span>
-                        <span class="d-none d-sm-inline">
+                        <span class="visitor-badge__item">
+                            <span class="visitor-badge__dot" aria-hidden="true"></span>
+                            Visitors: <span class="js-visitor-count visitor-badge__value">-</span>
+                        </span>
+                        <span class="visitor-badge__sep" aria-hidden="true"></span>
+                        <span class="visitor-badge__item">
                             Your IP: <span class="js-visitor-ip visitor-badge__value">-</span>
                         </span>
-                        <span class="d-none d-md-inline">&middot;</span>
-                        <span class="d-none d-md-inline">
-                            <span class="js-visitor-location visitor-badge__value">-</span>
-                        </span>
+                        <span class="visitor-badge__sep" aria-hidden="true"></span>
+                        <span class="visitor-badge__item js-visitor-location visitor-badge__value">-</span>
                     </div>
                 </div>
             }
@@ -236,6 +267,10 @@
                 <div class="row g-2 align-items-center">
                     <div class="col-md-6 text-center text-md-start">
                         &copy; @year @site.ShopName. All rights reserved.
+                        &nbsp;&middot;&nbsp;
+                        <span style="opacity:.75;font-size:.9em;">
+                            Last updated @lastUpdated.ToString("dd MMM yyyy")
+                        </span>
                     </div>
                     <div class="col-md-6 text-center text-md-end">
                         Designed &amp; Developed by <strong>Er Gaurav Kumar</strong>
@@ -245,6 +280,8 @@
                         <a asp-controller="Home" asp-action="Privacy">Privacy</a>
                         &nbsp;&middot;&nbsp;
                         <a asp-controller="Home" asp-action="Terms">Terms</a>
+                        &nbsp;&middot;&nbsp;
+                        <a asp-area="Admin" asp-controller="Auth" asp-action="Login" style="opacity:.6;">Admin</a>
                     </div>
                 </div>
             </div>

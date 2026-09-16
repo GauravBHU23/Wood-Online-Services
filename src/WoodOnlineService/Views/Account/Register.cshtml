@@ -20,7 +20,7 @@
                             <label asp-for="FullName" class="form-label"></label> <span class="text-danger">*</span>
                             <input asp-for="FullName" class="form-control" autocomplete="name"
                                    placeholder="Your full name"
-                                   data-validate="required|min:2" data-label="Full name" />
+                                   data-validate="required|fullname" data-label="Full name" />
                             <span asp-validation-for="FullName" class="field-validation-error"></span>
                         </div>
 
@@ -36,8 +36,8 @@
                             <div class="col-md-6 mb-1">
                                 <label asp-for="PhoneNumber" class="form-label"></label> <span class="text-danger">*</span>
                                 <input asp-for="PhoneNumber" class="form-control" type="tel" autocomplete="tel"
-                                       placeholder="98765 43210"
-                                       data-validate="required|phone" data-label="Phone number" />
+                                       placeholder="98765 43210" maxlength="10"
+                                       data-validate="required|mobile10" data-label="Phone number" />
                                 <span asp-validation-for="PhoneNumber" class="field-validation-error"></span>
                             </div>
                         </div>

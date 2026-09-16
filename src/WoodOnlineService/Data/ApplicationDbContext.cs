@@ -24,6 +24,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IDataPro
     public DbSet<CartItem> CartItems => Set<CartItem>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<ReviewVote> ReviewVotes => Set<ReviewVote>();
+    public DbSet<SiteFeedback> SiteFeedbacks => Set<SiteFeedback>();
+    public DbSet<AdminLoginOtp> AdminLoginOtps => Set<AdminLoginOtp>();
     public DbSet<VisitorLog> VisitorLogs => Set<VisitorLog>();
     public DbSet<VisitorCounter> VisitorCounters => Set<VisitorCounter>();
     public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();

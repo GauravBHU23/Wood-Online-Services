@@ -4,6 +4,24 @@ using WoodOnlineService.Models;
 
 namespace WoodOnlineService.Areas.Admin.ViewModels;
 
+/// <summary>One row of the admin user directory — identity fields plus a few numbers pulled from orders.</summary>
+public class UserListItem
+{
+    public string UserId { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string? PhoneNumber { get; set; }
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public DateTime CreatedDate { get; set; }
+    public bool IsAdmin { get; set; }
+    public bool IsBlocked { get; set; }
+    public DateTimeOffset? LockoutEnd { get; set; }
+
+    public int OrderCount { get; set; }
+    public decimal TotalSpend { get; set; }
+}
+
 public class DashboardViewModel
 {
     public int TotalProducts { get; set; }
@@ -63,7 +81,7 @@ public class ProductFormViewModel
     [Display(Name = "Stock Quantity")]
     public int StockQuantity { get; set; }
 
-    [Display(Name = "Available (site par dikhayein)")]
+    [Display(Name = "Available (show on site)")]
     public bool IsAvailable { get; set; } = true;
 
     [Display(Name = "Show on homepage")]

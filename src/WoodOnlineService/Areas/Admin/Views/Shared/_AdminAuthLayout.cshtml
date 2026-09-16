@@ -1,0 +1,57 @@
+@using Microsoft.Extensions.Options
+@using WoodOnlineService.Models
+@inject IOptions<SiteSettings> Site
+@{
+    var site = Site.Value;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>@ViewData["Title"] — Admin · @site.ShopName</title>
+    <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components.css" asp-append-version="true" />
+</head>
+<body style="background:var(--wood-900, #3f2817); min-height:100vh; display:flex; align-items:center;">
+
+    @if (TempData["Success"] is string successMessage)
+    {
+        <div data-flash="success" hidden>@successMessage</div>
+    }
+    @if (TempData["Error"] is string errorMessage)
+    {
+        <div data-flash="error" hidden>@errorMessage</div>
+    }
+    @if (TempData["Info"] is string infoMessage)
+    {
+        <div data-flash="info" hidden>@infoMessage</div>
+    }
+
+    <div class="container py-5">
+        <div class="row">
+            <div class="col-md-6 col-lg-5 mx-auto">
+                <div class="text-center mb-4">
+                    <img src="~/img/logo.svg" alt="@site.ShopName" style="max-width:220px;height:auto;" />
+                    <div class="mt-2" style="color:var(--wood-200,#e5d3c0);font-size:.85rem;letter-spacing:.08em;text-transform:uppercase;">
+                        Admin Panel
+                    </div>
+                </div>
+
+                @RenderBody()
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+    <script src="~/js/notify.js" asp-append-version="true"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

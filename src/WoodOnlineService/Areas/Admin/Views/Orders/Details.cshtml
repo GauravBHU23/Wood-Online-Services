@@ -158,7 +158,7 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-wood w-100">Update</button>
+                    <button type="submit" class="btn btn-wood w-100" data-busy-text="Updating...">Update</button>
                 </form>
             </div>
         </div>
@@ -168,7 +168,7 @@
             <div class="panel-body">
                 <ul class="list-unstyled mb-0 small">
                     <li class="mb-2">
-                        📥 <strong>Order aaya</strong><br />
+                        📥 <strong>Order placed</strong><br />
                         <span class="text-muted-wood ms-4">@Model.OrderDate.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt")</span>
                     </li>
                     @if (Model.ShippedDate is not null)

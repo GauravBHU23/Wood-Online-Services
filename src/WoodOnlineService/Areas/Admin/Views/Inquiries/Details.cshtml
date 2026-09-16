@@ -9,7 +9,7 @@
         <h1 class="mb-1">Inquiry #@Model.InquiryId</h1>
         <p class="text-muted-wood mb-0">@Model.CreatedDate.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt")</p>
     </div>
-    <a asp-action="Index" class="btn btn-outline-wood">← Sab inquiries</a>
+    <a asp-action="Index" class="btn btn-outline-wood">← All Inquiries</a>
 </div>
 
 <div class="row g-4">
@@ -19,7 +19,7 @@
             <div class="panel-body">
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
-                        <div class="small text-muted-wood">Naam</div>
+                        <div class="small text-muted-wood">Name</div>
                         <div class="fw-bold">@Model.Name</div>
                     </div>
                     <div class="col-md-6">
@@ -54,7 +54,7 @@
             <div class="panel-header">Quick Reply</div>
             <div class="panel-body d-flex flex-wrap gap-2">
                 <a href="tel:@Model.Phone" class="btn btn-wood">📞 Call</a>
-                <a href="https://wa.me/@digits?text=@Uri.EscapeDataString($"Namaste {Model.Name}, aapki inquiry ke liye dhanyavaad. ")"
+                <a href="https://wa.me/@digits?text=@Uri.EscapeDataString($"Hello {Model.Name}, thank you for your inquiry. ")"
                    target="_blank" rel="noopener" class="btn btn-whatsapp">💬 WhatsApp</a>
                 @if (!string.IsNullOrWhiteSpace(Model.Email))
                 {
@@ -89,7 +89,7 @@
                         <div class="small text-muted-wood mt-1">This is visible only to you, not to the customer.</div>
                     </div>
 
-                    <button type="submit" class="btn btn-wood w-100">Save Changes</button>
+                    <button type="submit" class="btn btn-wood w-100" data-busy-text="Saving...">Save Changes</button>
                 </form>
             </div>
         </div>
@@ -97,9 +97,10 @@
         <div class="panel">
             <div class="panel-body">
                 <form asp-action="Delete" asp-route-id="@Model.InquiryId" method="post"
-                      onsubmit="return confirm('Yeh inquiry hamesha ke liye Delete this?');">
+                      data-confirm="This inquiry will be permanently deleted. Continue?"
+                      data-confirm-title="Delete inquiry">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-outline-danger w-100">Delete Inquiry</button>
+                    <button type="submit" class="btn btn-outline-danger w-100" data-busy-text="Deleting...">Delete Inquiry</button>
                 </form>
             </div>
         </div>

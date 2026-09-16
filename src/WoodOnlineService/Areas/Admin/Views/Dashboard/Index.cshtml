@@ -18,7 +18,10 @@
 <div class="row g-3 mb-4">
     <div class="col-6 col-lg-3">
         <div class="stat-tile">
-            <div class="stat-label">Total Revenue</div>
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="stat-label">Total Revenue</div>
+                <span class="stat-tile__icon" style="background:var(--wood-100);color:var(--wood-700);">💰</span>
+            </div>
             <div class="stat-value">₹@Model.TotalRevenue.ToString("N0")</div>
             <div class="small text-muted-wood">30 days: ₹@Model.RevenueLast30Days.ToString("N0")</div>
         </div>
@@ -26,7 +29,10 @@
 
     <div class="col-6 col-lg-3">
         <div class="stat-tile" style="border-left-color:var(--gold);">
-            <div class="stat-label">Orders</div>
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="stat-label">Orders</div>
+                <span class="stat-tile__icon" style="background:#fdf1d8;color:#a67418;">📦</span>
+            </div>
             <div class="stat-value">@Model.TotalOrders</div>
             <div class="small @(Model.PendingOrders > 0 ? "text-danger fw-bold" : "text-muted-wood")">
                 @Model.PendingOrders pending
@@ -36,7 +42,10 @@
 
     <div class="col-6 col-lg-3">
         <div class="stat-tile" style="border-left-color:var(--success);">
-            <div class="stat-label">Products</div>
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="stat-label">Products</div>
+                <span class="stat-tile__icon" style="background:#e3f5ea;color:#1e8449;">🪑</span>
+            </div>
             <div class="stat-value">@Model.TotalProducts</div>
             <div class="small @(Model.OutOfStockCount > 0 ? "text-danger fw-bold" : "text-muted-wood")">
                 @Model.OutOfStockCount out of stock
@@ -46,10 +55,13 @@
 
     <div class="col-6 col-lg-3">
         <div class="stat-tile" style="border-left-color:var(--danger);">
-            <div class="stat-label">Inquiries</div>
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="stat-label">Inquiries</div>
+                <span class="stat-tile__icon" style="background:#fbe4e2;color:#b3261e;">💬</span>
+            </div>
             <div class="stat-value">@Model.TotalInquiries</div>
             <div class="small @(Model.NewInquiries > 0 ? "text-danger fw-bold" : "text-muted-wood")">
-                @Model.NewInquiries naye
+                @Model.NewInquiries new
             </div>
         </div>
     </div>

@@ -17,21 +17,49 @@ public interface IChatbotService
 
 /// <summary>
 /// Answers customer questions from the shop's own data - real prices, real stock, real contact
-/// details - rather than canned marketing text. Intent is matched on keywords, so it works
-/// offline and costs nothing to run.
+/// details - rather than canned marketing text. Intent is matched on keywords so the facts
+/// behind every answer come from the database, never a guess.
 ///
-/// It deliberately never invents an answer: anything it does not recognise is handed off to
-/// WhatsApp or the phone number so a person picks it up.
+/// When Gemini is configured, those facts are handed to it purely to phrase a natural reply -
+/// the system instruction explicitly forbids it from adding anything not given to it, so it
+/// cannot invent a price, a stock level or a policy. If Gemini is unavailable or fails, the
+/// canned wording below is used as-is, so the chatbot never depends on the AI call succeeding.
+///
+/// Anything the keyword matcher does not recognise is handed off to WhatsApp or the phone
+/// number so a person picks it up, rather than letting the AI improvise an answer.
 /// </summary>
 public class ChatbotService : IChatbotService
 {
+    private const string PhrasingInstruction =
+        "You are the customer-support chat assistant on a solid-wood furniture shop's website. " +
+        "Rewrite the FACTS block below into a warm, natural, concise reply (2-5 sentences, plain " +
+        "text, no markdown). Use ONLY the information in the FACTS block - never add a price, " +
+        "product, policy, phone number or any other detail that is not explicitly stated there. " +
+        "Do not invent anything. If the facts already read naturally, light touch-ups are fine.";
+
     private readonly ApplicationDbContext _db;
     private readonly SiteSettings _site;
+    private readonly IGeminiService _gemini;
+    private readonly ILogger<ChatbotService> _logger;
 
-    public ChatbotService(ApplicationDbContext db, IOptions<SiteSettings> site)
+    public ChatbotService(
+        ApplicationDbContext db, IOptions<SiteSettings> site, IGeminiService gemini, ILogger<ChatbotService> logger)
     {
         _db = db;
         _site = site.Value;
+        _gemini = gemini;
+        _logger = logger;
+    }
+
+    /// <summary>Runs the facts through Gemini for natural phrasing; returns the facts unchanged on any failure.</summary>
+    private async Task<ChatReply> PhraseAsync(ChatReply facts, CancellationToken ct)
+    {
+        if (!_gemini.IsEnabled) return facts;
+
+        var phrased = await _gemini.GenerateAsync(PhrasingInstruction, facts.Message, ct);
+        if (string.IsNullOrWhiteSpace(phrased)) return facts;
+
+        return facts with { Message = phrased };
     }
 
     private static readonly string[] DefaultSuggestions =
@@ -59,32 +87,35 @@ public class ChatbotService : IChatbotService
         if (Matches(q, "hi", "hello", "hey", "namaste", "good morning", "good evening"))
             return Greeting();
 
+        // Facts-bearing answers are phrased through Gemini when it's configured; a product
+        // list, the greeting, and the catalogue-miss fallback are left as-is since there's no
+        // free-form prose there worth rephrasing (and rephrasing a product list risks garbling it).
         if (Matches(q, "address", "where", "location", "shop", "reach", "direction", "map"))
-            return Location();
+            return await PhraseAsync(Location(), ct);
 
         if (Matches(q, "phone", "call", "contact", "number", "whatsapp", "email"))
-            return Contact();
+            return await PhraseAsync(Contact(), ct);
 
         if (Matches(q, "time", "timing", "hour", "open", "close", "when"))
-            return Hours();
+            return await PhraseAsync(Hours(), ct);
 
         if (Matches(q, "deliver", "shipping", "courier", "transport", "charge"))
-            return Delivery();
+            return await PhraseAsync(Delivery(), ct);
 
         if (Matches(q, "pay", "payment", "upi", "card", "cod", "cash", "online"))
-            return Payment();
+            return await PhraseAsync(Payment(), ct);
 
         if (Matches(q, "order", "buy", "purchase", "how do i", "how to"))
-            return HowToOrder();
+            return await PhraseAsync(HowToOrder(), ct);
 
         if (Matches(q, "custom", "measurement", "size", "made to", "design", "quote", "quotation"))
-            return CustomWork();
+            return await PhraseAsync(CustomWork(), ct);
 
         if (Matches(q, "wood", "material", "sheesham", "teak", "mango", "pine", "quality", "termite"))
-            return await WoodTypesAsync(ct);
+            return await PhraseAsync(await WoodTypesAsync(ct), ct);
 
         if (Matches(q, "warranty", "guarantee", "return", "refund", "cancel", "damage"))
-            return Warranty();
+            return await PhraseAsync(Warranty(), ct);
 
         if (Matches(q, "price", "cost", "rate", "cheap", "budget", "how much"))
             return await PricingAsync(ct);

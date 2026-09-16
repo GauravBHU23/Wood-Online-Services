@@ -1,0 +1,48 @@
+@* Shown once, right after registration, so a brand-new customer can leave general feedback
+   about the shop without it being tied to any one product. Dismissible; never forced. *@
+<div class="modal fade" id="feedbackPromptModal" tabindex="-1" aria-labelledby="feedbackPromptLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="feedbackPromptLabel">Welcome! How does the site feel so far?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted-wood small mb-3">
+                    Your account is ready. If you have a moment, a quick rating and a line or two
+                    helps us improve — totally optional, and takes ten seconds.
+                </p>
+
+                <form id="feedbackPromptForm">
+                    <div class="mb-3">
+                        <label class="form-label d-block">Your Rating <span class="text-danger">*</span></label>
+                        <div class="star-picker" id="feedbackStarPicker" role="radiogroup" aria-label="Select a rating">
+                            @for (var i = 1; i <= 5; i++)
+                            {
+                                <button type="button" data-value="@i" role="radio"
+                                        aria-checked="false" aria-label="@i star@(i == 1 ? "" : "s")">&#9733;</button>
+                            }
+                        </div>
+                        <input type="hidden" id="feedbackRating" value="0" />
+                        <span class="field-error d-none" id="feedbackRatingError">Please select a rating.</span>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label" for="feedbackComment">Your feedback</label>
+                        <textarea id="feedbackComment" class="form-control" rows="3" maxlength="1000"
+                                  placeholder="What do you think so far?"></textarea>
+                        <span class="field-error d-none" id="feedbackCommentError">
+                            Please write at least 5 characters.
+                        </span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-wood" data-bs-dismiss="modal">Maybe later</button>
+                <button type="button" class="btn btn-wood" id="feedbackPromptSubmit" data-busy-text="Sending...">
+                    Send Feedback
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

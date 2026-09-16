@@ -101,7 +101,14 @@ public static class DbSeeder
     private static async Task SeedAdminAsync(UserManager<ApplicationUser> userManager, IConfiguration config, ILogger logger)
     {
         var email = config["AdminUser:Email"] ?? "admin@woodonline.local";
-        var password = config["AdminUser:Password"] ?? "Admin@123";
+        var password = config["AdminUser:Password"];
+
+        // A weak, well-known fallback password would defeat the point of requiring one. If the
+        // deployment forgot to set AdminUser:Password, generate a random one instead of ever
+        // creating an account with a guessable password — and log it once so it can be captured.
+        var generated = string.IsNullOrWhiteSpace(password);
+        if (generated)
+            password = "Wd!" + Guid.NewGuid().ToString("N")[..20] + "9a";
 
         var admin = await userManager.FindByEmailAsync(email);
         if (admin is null)
@@ -111,17 +118,31 @@ public static class DbSeeder
                 UserName = email,
                 Email = email,
                 EmailConfirmed = true,
-                FullName = config["AdminUser:FullName"] ?? "Shop Admin"
+                FullName = config["AdminUser:FullName"] ?? "Shop Admin",
+                // The account must always change out of its very first password before it can
+                // do anything else, so a default or generated password can never persist.
+                MustChangePassword = true
             };
 
-            var result = await userManager.CreateAsync(admin, password);
+            var result = await userManager.CreateAsync(admin, password!);
             if (!result.Succeeded)
             {
                 logger.LogError("Failed to create the admin user: {Errors}",
                     string.Join("; ", result.Errors.Select(e => e.Description)));
                 return;
             }
-            logger.LogInformation("Admin user created: {Email}", email);
+
+            if (generated)
+            {
+                logger.LogWarning(
+                    "AdminUser:Password was not configured. A random one-time password was " +
+                    "generated for {Email}: {Password} — sign in with it now and change it " +
+                    "immediately; it will not be shown again.", email, password);
+            }
+            else
+            {
+                logger.LogInformation("Admin user created: {Email}. Sign in and change the password now.", email);
+            }
         }
 
         if (!await userManager.IsInRoleAsync(admin, Roles.Admin))

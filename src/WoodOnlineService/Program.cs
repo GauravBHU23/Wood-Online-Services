@@ -1,10 +1,12 @@
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using WoodOnlineService.Data;
 using WoodOnlineService.Middleware;
@@ -22,6 +24,7 @@ builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"
 builder.Services.Configure<CashfreeSettings>(builder.Configuration.GetSection("Cashfree"));
 builder.Services.Configure<SecuritySettings>(builder.Configuration.GetSection("Security"));
 builder.Services.Configure<FeatureSettings>(builder.Configuration.GetSection("Features"));
+builder.Services.Configure<GeminiSettings>(builder.Configuration.GetSection("Gemini"));
 
 var security = builder.Configuration.GetSection("Security").Get<SecuritySettings>() ?? new SecuritySettings();
 
@@ -75,7 +78,8 @@ builder.Services
         options.Lockout.AllowedForNewUsers = true;
     })
     .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
+    .AddDefaultTokenProviders()
+    .AddClaimsPrincipalFactory<SessionClaimsPrincipalFactory>();
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
@@ -100,6 +104,18 @@ builder.Services.ConfigureApplicationCookie(options =>
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return Task.CompletedTask;
         }
+
+        // LoginPath is a single global default, but the admin area has its own separate sign-in
+        // page (with its own OTP step) — anyone bounced off an /Admin/* page for not being signed
+        // in at all must land there, not on the customer form.
+        if (context.Request.Path.StartsWithSegments("/Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            var target = QueryHelpers.AddQueryString(
+                "/Admin/Auth/Login", "returnUrl", context.Request.Path + context.Request.QueryString);
+            context.Response.Redirect(target);
+            return Task.CompletedTask;
+        }
+
         context.Response.Redirect(context.RedirectUri);
         return Task.CompletedTask;
     };
@@ -114,12 +130,60 @@ builder.Services.ConfigureApplicationCookie(options =>
         context.Response.Redirect(context.RedirectUri);
         return Task.CompletedTask;
     };
+
+    // Enforces one signed-in device per account: every login stamps a fresh CurrentSessionId
+    // onto the user and into this cookie's claims. If a request's cookie carries an older
+    // session id than the one currently on the user record, another login has since happened
+    // elsewhere, so this cookie is rejected — signing this device out on its very next request.
+    // Chained after Identity's own SecurityStampValidator (registered by AddIdentity), which
+    // still runs first and still handles the "password/role changed" case as before.
+    var identityValidator = options.Events.OnValidatePrincipal;
+    options.Events.OnValidatePrincipal = async context =>
+    {
+        if (identityValidator is not null) await identityValidator(context);
+        if (!context.ShouldRenew && context.Principal?.Identity?.IsAuthenticated != true) return;
+
+        var sessionClaim = context.Principal?.FindFirst("wos_session_id")?.Value;
+        if (string.IsNullOrEmpty(sessionClaim)) return;
+
+        var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await userManager.GetUserAsync(context.Principal!);
+
+        if (user is null || !string.Equals(user.CurrentSessionId, sessionClaim, StringComparison.Ordinal))
+        {
+            context.RejectPrincipal();
+            await context.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+        }
+    };
 });
 
 // Keeps auth cookies and antiforgery tokens valid across Azure App Service restarts and scale-out.
-builder.Services.AddDataProtection()
+var dataProtection = builder.Services.AddDataProtection()
     .PersistKeysToDbContext<ApplicationDbContext>()
     .SetApplicationName("WoodOnlineService");
+
+// The key ring lives in the same database as everything else, so if that database is ever
+// exposed (leaked connection string, backup theft) an unencrypted key ring would let an
+// attacker forge auth cookies and antiforgery tokens directly. Encrypting it with a certificate
+// means both the database AND this certificate would have to leak together for that to work.
+var certBase64 = builder.Configuration["DataProtection:CertificateBase64"];
+var certPassword = builder.Configuration["DataProtection:CertificatePassword"];
+
+if (!string.IsNullOrWhiteSpace(certBase64) && !string.IsNullOrWhiteSpace(certPassword))
+{
+#pragma warning disable SYSLIB0057 // X509CertificateLoader needs a newer SDK than this project targets.
+    var cert = new System.Security.Cryptography.X509Certificates.X509Certificate2(
+        Convert.FromBase64String(certBase64), certPassword,
+        System.Security.Cryptography.X509Certificates.X509KeyStorageFlags.MachineKeySet);
+#pragma warning restore SYSLIB0057
+    dataProtection.ProtectKeysWithCertificate(cert);
+}
+else if (!builder.Environment.IsDevelopment())
+{
+    throw new InvalidOperationException(
+        "DataProtection:CertificateBase64 / CertificatePassword are not configured. " +
+        "The key ring must be encrypted at rest outside Development.");
+}
 
 // ---------------------------------------------------------------- anti-forgery
 builder.Services.AddAntiforgery(options =>
@@ -191,12 +255,16 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 builder.Services.AddHttpClient("geo");
 builder.Services.AddHttpClient<ICashfreeService, CashfreeService>();
+builder.Services.AddHttpClient<IGeminiService, GeminiService>();
 
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<ISiteFeedbackService, SiteFeedbackService>();
+builder.Services.AddScoped<IAdminOtpService, AdminOtpService>();
+builder.Services.AddSingleton<ISuspiciousActivityService, SuspiciousActivityService>();
 builder.Services.AddScoped<IVisitorService, VisitorService>();
 builder.Services.AddScoped<IChatbotService, ChatbotService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
@@ -215,6 +283,11 @@ builder.Services.AddControllersWithViews(options =>
 {
     // Every state-changing POST is CSRF-checked unless it opts out (the payment webhook does).
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
+
+    // A default or freshly-generated password locks the account to /Account/ChangePassword
+    // until it is replaced — enforced globally so it cannot be bypassed by navigating straight
+    // past the login redirect to some other URL.
+    options.Filters.Add<RequirePasswordChangeFilter>();
 })
 .AddViewOptions(options =>
 {
@@ -244,7 +317,13 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
     };
 });
 
-// Azure App Service terminates TLS at the front end; trust its forwarded headers.
+// Azure App Service terminates TLS at the front end and is the only ingress this app has (no
+// custom load balancer or CDN in front of it), so its forwarded headers are trusted wholesale.
+// Azure's own front-end IPs are not fixed, which is why KnownNetworks/KnownProxies are cleared
+// rather than pinned to a specific range — pinning IPs that Azure can rotate would risk the app
+// silently stopping trusting its own front end. If a CDN or Front Door is ever added in front of
+// this app, this must be revisited so forwarded headers from the public internet are not trusted
+// past that new edge.
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -318,6 +397,17 @@ app.UseStaticFiles(new StaticFileOptions
             Public = true,
             MaxAge = TimeSpan.FromDays(30)
         };
+
+        // An uploaded SVG is sanitised before it is saved (see ImageService), but forcing a
+        // download here too means even a sanitiser gap can't execute script just by a browser
+        // tab opening the file directly rather than rendering it inside an <img> tag.
+        var path = ctx.File.PhysicalPath;
+        if (!string.IsNullOrEmpty(path) &&
+            path.Contains(Path.Combine("wwwroot", "uploads"), StringComparison.OrdinalIgnoreCase) &&
+            path.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+        {
+            ctx.Context.Response.Headers["Content-Disposition"] = "inline; filename=\"image.svg\"";
+        }
     }
 });
 

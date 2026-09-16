@@ -18,6 +18,7 @@
 }
 
 .wos-toast {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: .7rem;
@@ -29,10 +30,42 @@
   padding: .85rem 1rem;
   pointer-events: auto;
   opacity: 0;
-  transform: translateX(24px);
-  transition: opacity .25s ease, transform .25s ease;
+  transform: translateX(28px) scale(.97);
+  transition: opacity .3s cubic-bezier(.2,.9,.3,1.2), transform .3s cubic-bezier(.2,.9,.3,1.2);
+  overflow: hidden;
 }
-.wos-toast.is-visible { opacity: 1; transform: translateX(0); }
+.wos-toast.is-visible { opacity: 1; transform: translateX(0) scale(1); }
+
+/* A thin bar that drains over the toast's auto-dismiss duration, so the countdown is visible
+   rather than the toast just vanishing without warning. Driven by a CSS variable the JS sets. */
+.wos-toast::after {
+  content: "";
+  position: absolute;
+  left: 0; bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: currentColor;
+  opacity: .25;
+  transform-origin: left;
+  animation: wos-toast-drain var(--wos-toast-duration, 4500ms) linear forwards;
+}
+.wos-toast--success::after { color: var(--success); }
+.wos-toast--error::after   { color: var(--danger); }
+.wos-toast--warning::after { color: #b8860b; }
+.wos-toast--info::after    { color: var(--wood-500); }
+.wos-toast[data-paused="true"]::after { animation-play-state: paused; }
+.wos-toast--persistent::after { display: none; }
+
+@keyframes wos-toast-drain {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+
+.wos-toast__icon { animation: wos-toast-pop .35s cubic-bezier(.2,.9,.3,1.4) .05s both; }
+@keyframes wos-toast-pop {
+  0%   { transform: scale(.4); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
 
 .wos-toast--success { border-left-color: var(--success); }
 .wos-toast--error   { border-left-color: var(--danger); }
@@ -190,6 +223,7 @@
 @media (prefers-reduced-motion: reduce) {
   .skeleton, .wos-loader__spinner, .wos-btn-spinner { animation: none; }
   .wos-toast, .wos-modal, .wos-modal-overlay, .wos-loader-overlay { transition: none; }
+  .wos-toast::after, .wos-toast__icon { animation: none; }
 }
 
 /* --- Star ratings ------------------------------------------------------- */
@@ -265,6 +299,26 @@
 /* --- Search with autocomplete ------------------------------------------ */
 .search-wrap { position: relative; }
 
+/* --- Mobile search icon + slide-down bar -------------------------------- */
+.mobile-search-toggle {
+  display: grid; place-items: center;
+  width: 40px; height: 40px;
+  background: none;
+  border: none;
+  color: var(--wood-800);
+  border-radius: 8px;
+}
+.mobile-search-toggle:hover,
+.mobile-search-toggle[aria-expanded="true"] { background: var(--wood-50); }
+
+.mobile-search-bar {
+  position: relative;
+  width: 100%;
+  padding: 0 0 .75rem;
+  margin-top: -.25rem;
+}
+.mobile-search-bar .search-results { top: calc(100% - 8px); }
+
 .search-results {
   position: absolute;
   top: calc(100% + 6px);
@@ -312,17 +366,33 @@
 .visitor-badge {
   display: inline-flex;
   align-items: center;
-  gap: .5rem;
+  justify-content: center;
   flex-wrap: wrap;
+  row-gap: .3rem;
+  column-gap: .6rem;
   background: rgba(255, 255, 255, .07);
   border: 1px solid rgba(255, 255, 255, .14);
-  border-radius: 999px;
-  padding: .35rem .9rem;
+  border-radius: var(--radius, 10px);
+  padding: .55rem 1.1rem;
   font-size: .8rem;
   color: var(--wood-200);
+  max-width: 100%;
+}
+.visitor-badge__item {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  white-space: nowrap;
+}
+.visitor-badge__sep {
+  display: inline-block;
+  width: 1px;
+  height: 12px;
+  background: rgba(255, 255, 255, .18);
 }
 .visitor-badge__dot {
   width: 7px; height: 7px;
+  flex-shrink: 0;
   border-radius: 50%;
   background: #4ade80;
   box-shadow: 0 0 0 rgba(74, 222, 128, .5);
@@ -334,6 +404,13 @@
   100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
 }
 .visitor-badge__value { color: #fff; font-weight: 600; }
+
+/* On very narrow screens the three items and separators wrap onto their own lines;
+   hiding the separators there avoids an orphaned "|" sitting alone at a wrap point. */
+@media (max-width: 359.98px) {
+  .visitor-badge__sep { display: none; }
+  .visitor-badge { flex-direction: column; gap: .35rem; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .visitor-badge__dot { animation: none; }
@@ -635,6 +712,10 @@
   display: grid; place-items: center;
   border-radius: 4px;
   line-height: 0;
+  /* Higher than the floating WhatsApp/chat buttons (z-index 1030), which otherwise sit on
+     top of and swallow clicks on this icon whenever a password field lands near the bottom
+     of the viewport on a small screen (e.g. the Confirm Password field on Register). */
+  z-index: 1040;
 }
 .password-toggle:hover { color: var(--wood-700); background: var(--wood-50); }
 .password-toggle svg { width: 19px; height: 19px; display: block; }

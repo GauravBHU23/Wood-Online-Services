@@ -60,6 +60,23 @@ public class PaymentApiController : ControllerBase
             return BadRequest(new { success = false, message = "Invalid request." });
         }
 
+        // A correctly-signed payload is valid forever unless we also check its age, which would
+        // let a captured request (e.g. from a compromised log) be replayed at any later time.
+        // Cashfree sends the timestamp as Unix epoch milliseconds.
+        if (!long.TryParse(timestamp, out var epochMs))
+        {
+            _logger.LogWarning("Payment webhook rejected: malformed timestamp.");
+            return BadRequest(new { success = false, message = "Invalid request." });
+        }
+
+        var sentAt = DateTimeOffset.FromUnixTimeMilliseconds(epochMs);
+        var age = DateTimeOffset.UtcNow - sentAt;
+        if (age > TimeSpan.FromMinutes(5) || age < TimeSpan.FromMinutes(-5))
+        {
+            _logger.LogWarning("Payment webhook rejected: timestamp outside freshness window ({Age}).", age);
+            return BadRequest(new { success = false, message = "Invalid request." });
+        }
+
         if (!_cashfree.VerifyWebhookSignature(rawBody, timestamp, signature))
         {
             // Someone posted a forged callback. Log it and give nothing away.

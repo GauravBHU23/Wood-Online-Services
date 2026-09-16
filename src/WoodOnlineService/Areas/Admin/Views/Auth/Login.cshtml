@@ -1,0 +1,50 @@
+@model WoodOnlineService.ViewModels.LoginViewModel
+@{
+    Layout = "_AdminAuthLayout";
+    ViewData["Title"] = "Admin Sign In";
+    var returnUrl = ViewData["ReturnUrl"] as string;
+}
+
+<div class="panel">
+    <div class="panel-header text-center">Admin Sign In</div>
+    <div class="panel-body">
+        <p class="text-muted-wood small mb-4 text-center">
+            This sign-in is for shop administrators only and requires a one-time code
+            sent to your email after your password.
+        </p>
+
+        <form asp-area="Admin" asp-controller="Auth" asp-action="Login" asp-route-returnUrl="@returnUrl"
+              method="post" novalidate data-validate-on-submit>
+            @Html.AntiForgeryToken()
+
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small"></div>
+
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label">Email</label>
+                <input asp-for="Email" class="form-control" type="email" autocomplete="username"
+                       placeholder="admin@example.com"
+                       data-validate="required|email" data-label="Email address" />
+                <span asp-validation-for="Email" class="field-validation-error"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label">Password</label>
+                <input asp-for="Password" class="form-control" type="password" autocomplete="current-password"
+                       data-validate="required" data-label="Password" />
+                <span asp-validation-for="Password" class="field-validation-error"></span>
+            </div>
+
+            <button type="submit" class="btn btn-wood w-100 btn-lg mt-2" data-busy-text="Signing in...">
+                Continue
+            </button>
+        </form>
+    </div>
+</div>
+
+<p class="text-center small mt-3" style="color:var(--wood-200,#e5d3c0);">
+    Not an admin? <a asp-controller="Account" asp-action="Login" asp-area="" style="color:#fff;">Customer sign in</a>
+</p>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

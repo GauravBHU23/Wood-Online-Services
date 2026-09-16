@@ -39,7 +39,7 @@
                     <div style="font-size:2.5rem;">❌</div>
                     <h3 class="mb-1">This order has been cancelled</h3>
                     <p class="text-muted-wood mb-0 small">
-                        Koi sawaal ho to <a href="tel:@site.Phone.Replace(" ", "")">@site.Phone</a> par baat .
+                        For any questions, call <a href="tel:@site.Phone.Replace(" ", "")">@site.Phone</a>.
                     </p>
                 </div>
             }
@@ -207,9 +207,10 @@
                 @if (canCancel)
                 {
                     <form asp-action="Cancel" asp-route-id="@Model.OrderId" method="post"
-                          onsubmit="return confirm('Are you sure you want to cancel this order?');">
+                          data-confirm="Are you sure you want to cancel this order?"
+                          data-confirm-title="Cancel order">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-outline-danger w-100">Cancel Order</button>
+                        <button type="submit" class="btn btn-outline-danger w-100" data-busy-text="Cancelling...">Cancel Order</button>
                     </form>
                 }
 

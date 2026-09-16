@@ -39,7 +39,7 @@
                        placeholder="Search by name, phone or message..." />
             </div>
             <div class="col-md-3 d-flex gap-2">
-                <button type="submit" class="btn btn-wood flex-grow-1">Search</button>
+                <button type="submit" class="btn btn-wood flex-grow-1" data-busy-text="Searching...">Search</button>
                 @if (!string.IsNullOrWhiteSpace(Model.Search))
                 {
                     <a asp-action="Index" asp-route-status="@Model.Status" class="btn btn-outline-secondary">Reset</a>

@@ -59,6 +59,9 @@
             '<div class="wos-toast__message">' + escapeHtml(message) + '</div></div>' +
             '<button type="button" class="wos-toast__close" aria-label="Dismiss">&times;</button>';
 
+        if (duration > 0) el.style.setProperty('--wos-toast-duration', duration + 'ms');
+        else el.classList.add('wos-toast--persistent'); // no drain bar when the toast won't auto-dismiss
+
         el.querySelector('.wos-toast__close').addEventListener('click', function () {
             dismiss(el);
         });
@@ -68,9 +71,14 @@
 
         if (duration > 0) {
             var timer = setTimeout(function () { dismiss(el); }, duration);
-            // Pause the countdown while the pointer rests on the toast.
-            el.addEventListener('mouseenter', function () { clearTimeout(timer); });
+            // Pause the countdown (and visually freeze the drain bar) while the pointer rests
+            // on the toast, so a message worth reading doesn't vanish mid-read.
+            el.addEventListener('mouseenter', function () {
+                clearTimeout(timer);
+                el.setAttribute('data-paused', 'true');
+            });
             el.addEventListener('mouseleave', function () {
+                el.removeAttribute('data-paused');
                 timer = setTimeout(function () { dismiss(el); }, 2000);
             });
         }

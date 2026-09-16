@@ -87,8 +87,13 @@ public class SecuritySettings
 
     public int RateLimitWindowSeconds { get; set; } = 60;
 
-    public int MaxFailedLoginAttempts { get; set; } = 5;
-    public int LockoutMinutes { get; set; } = 15;
+    public int MaxFailedLoginAttempts { get; set; } = 3;
+
+    /// <summary>How long a customer account is locked after MaxFailedLoginAttempts wrong passwords.</summary>
+    public int LockoutMinutes { get; set; } = 10;
+
+    /// <summary>Admin accounts lock for longer on the same attempt budget — a compromised admin password is a bigger deal.</summary>
+    public int AdminLockoutMinutes { get; set; } = 30;
 
     /// <summary>Extra origins allowed by CORS. Empty means same-origin only, which is the default.</summary>
     public string[] AllowedOrigins { get; set; } = [];
@@ -110,4 +115,23 @@ public class FeatureSettings
     public bool EnableVisitorCounter { get; set; } = true;
     public bool EnableGeoLocation { get; set; } = true;
     public bool EnablePwa { get; set; } = true;
+}
+
+/// <summary>
+/// Google Gemini credentials for the chatbot's natural-language phrasing. Keep the real key out
+/// of source control — it belongs in appsettings.Production.json, Azure App Settings, or
+/// appsettings.Development.json (gitignored).
+/// </summary>
+public class GeminiSettings
+{
+    public bool Enabled { get; set; }
+
+    public string ApiKey { get; set; } = string.Empty;
+
+    /// <summary>Free-tier model id, e.g. gemini-3.5-flash-lite.</summary>
+    public string Model { get; set; } = "gemini-3.5-flash-lite";
+
+    public string BaseUrl { get; set; } = "https://generativelanguage.googleapis.com/v1beta/models/";
+
+    public bool IsConfigured => Enabled && !string.IsNullOrWhiteSpace(ApiKey);
 }

@@ -174,6 +174,45 @@ namespace WoodOnlineService.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("WoodOnlineService.Models.AdminLoginOtp", b =>
+                {
+                    b.Property<int>("AdminLoginOtpId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AdminLoginOtpId"));
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("PublicToken")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("AdminLoginOtpId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AdminLoginOtps");
+                });
+
             modelBuilder.Entity("WoodOnlineService.Models.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -197,6 +236,10 @@ namespace WoodOnlineService.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("CurrentSessionId")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
@@ -214,6 +257,9 @@ namespace WoodOnlineService.Migrations
 
                     b.Property<DateTimeOffset?>("LockoutEnd")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("bit");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
@@ -775,6 +821,48 @@ namespace WoodOnlineService.Migrations
                     b.ToTable("ReviewVotes");
                 });
 
+            modelBuilder.Entity("WoodOnlineService.Models.SiteFeedback", b =>
+                {
+                    b.Property<int>("SiteFeedbackId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SiteFeedbackId"));
+
+                    b.Property<string>("AdminResponse")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("AuthorName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Comment")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("FromWelcomePrompt")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("SiteFeedbackId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("SiteFeedbacks");
+                });
+
             modelBuilder.Entity("WoodOnlineService.Models.VisitorCounter", b =>
                 {
                     b.Property<int>("VisitorCounterId")
@@ -907,6 +995,17 @@ namespace WoodOnlineService.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("WoodOnlineService.Models.AdminLoginOtp", b =>
+                {
+                    b.HasOne("WoodOnlineService.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("WoodOnlineService.Models.CartItem", b =>
                 {
                     b.HasOne("WoodOnlineService.Models.Product", "Product")
@@ -1019,6 +1118,17 @@ namespace WoodOnlineService.Migrations
                         .IsRequired();
 
                     b.Navigation("Review");
+                });
+
+            modelBuilder.Entity("WoodOnlineService.Models.SiteFeedback", b =>
+                {
+                    b.HasOne("WoodOnlineService.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("WoodOnlineService.Models.Category", b =>

@@ -34,6 +34,7 @@ public interface INotificationService
     Task NotifyWelcomeAsync(string email, string fullName);
     Task NotifyNewReviewAsync(Review review, string productName);
     Task NotifyPasswordResetAsync(string email, string fullName, string resetLink);
+    Task NotifyAdminOtpAsync(string email, string fullName, string code, TimeSpan validFor);
 }
 
 /// <summary>
@@ -268,6 +269,23 @@ public class NotificationService : INotificationService
             SupportFooter);
 
         return SendAsync(email, "Reset your password", body);
+    }
+
+    public Task NotifyAdminOtpAsync(string email, string fullName, string code, TimeSpan validFor)
+    {
+        var body = EmailTemplates.Shell(_site.ShopName, "Admin Sign-In Code",
+            EmailTemplates.Heading("Your sign-in code") +
+            EmailTemplates.Paragraph($"Hello {fullName},") +
+            EmailTemplates.Paragraph(
+                "Enter this code to finish signing in to the admin panel. " +
+                $"It expires in {(int)validFor.TotalMinutes} minutes and can be used once.") +
+            EmailTemplates.CodeBox(code) +
+            EmailTemplates.Paragraph(
+                "If you did not just try to sign in, someone else may have your password - " +
+                "change it as soon as possible and do not share this code with anyone."),
+            SupportFooter);
+
+        return SendAsync(email, $"{code} is your admin sign-in code", body);
     }
 
     private async Task SendAsync(string? to, string subject, string htmlBody)

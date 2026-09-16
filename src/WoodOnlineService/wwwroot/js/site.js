@@ -16,11 +16,13 @@
         initSearch();
         initAddToCart();
         initReviews();
+        initFeedbackPrompt();
         initConfirmActions();
         initVisitorBadge();
         initPwa();
         initPasswordToggles();
         initLazyEnhancements();
+        initScrollReveal();
     });
 
     // ---------------------------------------------------------------- flash
@@ -223,6 +225,16 @@
                     if (value && !/^[0-9+\-\s()]{7,20}$/.test(value))
                         error = 'Please enter a valid phone number.';
                     break;
+                case 'mobile10':
+                    // Stricter than 'phone': a real 10-digit Indian mobile number, used where the
+                    // account itself is being created rather than just a delivery contact number.
+                    if (value && !/^[6-9]\d{9}$/.test(value))
+                        error = 'Please enter a valid 10-digit mobile number.';
+                    break;
+                case 'fullname':
+                    if (value && !/^[A-Za-z][A-Za-z.'-]*(?:\s+[A-Za-z][A-Za-z.'-]*)+$/.test(value))
+                        error = 'Please enter your real full name (first and last name).';
+                    break;
                 case 'pincode':
                     if (value && !/^\d{6}$/.test(value)) error = 'Please enter a 6-digit PIN code.';
                     break;
@@ -324,8 +336,32 @@
 
     // ---------------------------------------------------------------- search
     function initSearch() {
-        var input = document.getElementById('siteSearch');
-        var results = document.getElementById('searchResults');
+        wireSearchBox('siteSearch', 'searchResults');
+        wireSearchBox('mobileSiteSearch', 'mobileSearchResults');
+        initMobileSearchToggle();
+    }
+
+    /** Opens/closes the compact search bar mobile screens get instead of the full nav menu. */
+    function initMobileSearchToggle() {
+        var toggle = document.getElementById('mobileSearchToggle');
+        var bar = document.getElementById('mobileSearchBar');
+        if (!toggle || !bar) return;
+
+        toggle.addEventListener('click', function () {
+            var opening = bar.hidden;
+            bar.hidden = !opening;
+            toggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
+
+            if (opening) {
+                var input = document.getElementById('mobileSiteSearch');
+                if (input) input.focus();
+            }
+        });
+    }
+
+    function wireSearchBox(inputId, resultsId) {
+        var input = document.getElementById(inputId);
+        var results = document.getElementById(resultsId);
         if (!input || !results) return;
 
         var timer = null;
@@ -488,42 +524,9 @@
 
     // ---------------------------------------------------------------- reviews
     function initReviews() {
-        initStarPicker();
+        initStarPickerFor('starPicker', 'reviewRating', 'ratingError');
         initReviewForm();
         initHelpfulButtons();
-    }
-
-    function initStarPicker() {
-        var picker = document.getElementById('starPicker');
-        var hidden = document.getElementById('reviewRating');
-        if (!picker || !hidden) return;
-
-        var buttons = Array.prototype.slice.call(picker.querySelectorAll('button'));
-
-        function paint(upTo) {
-            buttons.forEach(function (b, i) { b.classList.toggle('is-active', i < upTo); });
-        }
-
-        buttons.forEach(function (button, index) {
-            button.addEventListener('mouseenter', function () { paint(index + 1); });
-
-            button.addEventListener('click', function () {
-                hidden.value = index + 1;
-                paint(index + 1);
-                buttons.forEach(function (b, i) {
-                    b.setAttribute('aria-checked', i === index ? 'true' : 'false');
-                });
-
-                var error = document.getElementById('ratingError');
-                if (error) error.classList.add('d-none');
-            });
-        });
-
-        picker.addEventListener('mouseleave', function () {
-            paint(parseInt(hidden.value, 10) || 0);
-        });
-
-        paint(parseInt(hidden.value, 10) || 0);
     }
 
     function initReviewForm() {
@@ -580,6 +583,96 @@
                 window.location.reload();
             }
         });
+    }
+
+    // ---------------------------------------------------------------- welcome feedback
+    /** Opens the post-registration feedback modal once, when the server flags it via TempData. */
+    function initFeedbackPrompt() {
+        var trigger = document.getElementById('feedbackPromptTrigger');
+        var modalEl = document.getElementById('feedbackPromptModal');
+        if (!trigger || !modalEl || typeof bootstrap === 'undefined') return;
+
+        var modal = new bootstrap.Modal(modalEl);
+
+        initStarPickerFor('feedbackStarPicker', 'feedbackRating', 'feedbackRatingError');
+
+        var submitButton = document.getElementById('feedbackPromptSubmit');
+        submitButton.addEventListener('click', async function () {
+            var rating = parseInt(document.getElementById('feedbackRating').value, 10) || 0;
+            var comment = document.getElementById('feedbackComment').value.trim();
+
+            var ratingError = document.getElementById('feedbackRatingError');
+            var commentError = document.getElementById('feedbackCommentError');
+            var valid = true;
+
+            if (rating < 1) {
+                ratingError.classList.remove('d-none');
+                valid = false;
+            } else {
+                ratingError.classList.add('d-none');
+            }
+
+            if (comment.length < 5) {
+                commentError.classList.remove('d-none');
+                valid = false;
+            } else {
+                commentError.classList.add('d-none');
+            }
+
+            if (!valid) return;
+
+            var restore = WOS.buttonBusy(submitButton, 'Sending...');
+
+            var response = await WOS.api('/api/feedback', {
+                method: 'POST',
+                body: { rating: rating, comment: comment, fromWelcomePrompt: true }
+            });
+
+            restore();
+
+            if (response.ok && response.data && response.data.success) {
+                modal.hide();
+                WOS.toast(response.data.message || 'Thank you for your feedback!', 'success');
+            } else {
+                WOS.error((response.data && response.data.message) || 'Could not send your feedback. Please try again.');
+            }
+        });
+
+        modal.show();
+    }
+
+    /** Shared star-rating widget logic, reused by both the product review form and this prompt. */
+    function initStarPickerFor(pickerId, hiddenId, errorId) {
+        var picker = document.getElementById(pickerId);
+        var hidden = document.getElementById(hiddenId);
+        if (!picker || !hidden) return;
+
+        var buttons = Array.prototype.slice.call(picker.querySelectorAll('button'));
+
+        function paint(upTo) {
+            buttons.forEach(function (b, i) { b.classList.toggle('is-active', i < upTo); });
+        }
+
+        buttons.forEach(function (button, index) {
+            button.addEventListener('mouseenter', function () { paint(index + 1); });
+
+            button.addEventListener('click', function () {
+                hidden.value = index + 1;
+                paint(index + 1);
+                buttons.forEach(function (b, i) {
+                    b.setAttribute('aria-checked', i === index ? 'true' : 'false');
+                });
+
+                var error = errorId && document.getElementById(errorId);
+                if (error) error.classList.add('d-none');
+            });
+        });
+
+        picker.addEventListener('mouseleave', function () {
+            paint(parseInt(hidden.value, 10) || 0);
+        });
+
+        paint(parseInt(hidden.value, 10) || 0);
     }
 
     function initHelpfulButtons() {
@@ -741,8 +834,14 @@
                 button.innerHTML = eyeIcon(!showing);
                 button.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
 
-                // Keep the caret where the customer left it.
-                field.focus();
+                // Keep the caret where the customer left it, without the page jumping: a plain
+                // .focus() re-scrolls the field into view (and can shift the whole page, or pop
+                // the mobile keyboard) even though it never lost focus in the first place.
+                try {
+                    field.focus({ preventScroll: true });
+                } catch (e) {
+                    field.focus();
+                }
                 var end = field.value.length;
                 try { field.setSelectionRange(end, end); } catch (e) { }
             });
@@ -760,6 +859,46 @@
     }
 
     // ---------------------------------------------------------------- misc
+    // ---------------------------------------------------------------- scroll reveal
+    /**
+     * Fades and lifts content into place as it scrolls into view. Targets are picked up
+     * automatically — product/category cards, panels, and page headers already carry the
+     * right class names, so most pages get this for free with no markup changes. A grid of
+     * cards is grouped so it fans in with a slight stagger rather than all at once.
+     */
+    function initScrollReveal() {
+        if (typeof IntersectionObserver === 'undefined') return;
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        var targets = document.querySelectorAll(
+            '.card-wood, .panel, main > .container > h1, main > .container > .hero'
+        );
+        if (!targets.length) return;
+
+        // Cards that share an immediate grid/row parent stagger together; everything else
+        // reveals on its own.
+        var groupedParents = new Set();
+        targets.forEach(function (el) {
+            el.classList.add('js-reveal');
+            var parent = el.closest('.row, .grid, .products-grid');
+            if (parent && el.classList.contains('card-wood')) {
+                parent.classList.add('js-reveal-group');
+                groupedParents.add(parent);
+            }
+        });
+
+        var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+        targets.forEach(function (el) { observer.observe(el); });
+    }
+
     function initLazyEnhancements() {
         // Quantity steppers on the cart and product pages.
         document.querySelectorAll('[data-qty-step]').forEach(function (button) {

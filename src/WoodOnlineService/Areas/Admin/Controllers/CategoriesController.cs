@@ -153,7 +153,7 @@ public class CategoriesController : AdminBaseController
         // Products point at a category, so an occupied one can only be deactivated.
         if (category.Products.Count > 0)
         {
-            TempData["Error"] = $"\"{category.Name}\" mein {category.Products.Count} products. Move them to another category, or set this category inactive.";
+            TempData["Error"] = $"\"{category.Name}\" has {category.Products.Count} products. Move them to another category, or set this category inactive.";
             return RedirectToAction(nameof(Index));
         }
 

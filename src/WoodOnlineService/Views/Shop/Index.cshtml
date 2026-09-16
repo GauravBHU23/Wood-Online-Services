@@ -30,7 +30,7 @@
                     <div class="panel-body">
                         <div class="input-group">
                             <input type="search" name="search" value="@Model.Search" class="form-control" placeholder="Search products..." />
-                            <button class="btn btn-wood" type="submit">🔍</button>
+                            <button class="btn btn-wood" type="submit" data-busy-text="...">🔍</button>
                         </div>
                     </div>
                 </div>
@@ -81,7 +81,7 @@
                                 <input type="number" name="maxPrice" value="@Model.MaxPrice" class="form-control" placeholder="Max" min="0" />
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-wood btn-sm w-100 mt-2">Apply Filter</button>
+                        <button type="submit" class="btn btn-wood btn-sm w-100 mt-2" data-busy-text="Applying...">Apply Filter</button>
                     </div>
                 </div>
 

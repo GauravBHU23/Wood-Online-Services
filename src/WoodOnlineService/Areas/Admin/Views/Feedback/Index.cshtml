@@ -1,0 +1,114 @@
+@model WoodOnlineService.Areas.Admin.ViewModels.AdminListViewModel<WoodOnlineService.Models.SiteFeedback>
+@{
+    ViewData["Title"] = "Site Feedback";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="mb-1">Site Feedback</h1>
+        <p class="text-muted-wood mb-0">General feedback about the shop and the site, not tied to any one product</p>
+    </div>
+    <div class="text-end">
+        <div style="font-size:1.6rem;font-weight:700;color:var(--wood-900);">
+            @(((decimal)ViewBag.AverageRating).ToString("0.0")) &#9733;
+        </div>
+        <div class="small text-muted-wood">@ViewBag.TotalCount total</div>
+    </div>
+</div>
+
+<div class="panel mb-3">
+    <div class="panel-body py-3">
+        <form method="get" asp-action="Index" class="row g-2">
+            <div class="col-md-9">
+                <input type="search" name="search" value="@Model.Search" class="form-control"
+                       placeholder="Search by author or comment..." />
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-wood flex-grow-1" data-busy-text="Searching...">Search</button>
+                @if (!string.IsNullOrWhiteSpace(Model.Search))
+                {
+                    <a asp-action="Index" class="btn btn-outline-secondary">Reset</a>
+                }
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.Items.Count == 0)
+{
+    <div class="panel">
+        <div class="empty-state">
+            <div style="font-size:3rem;opacity:.35;">&#9733;</div>
+            <h3>No feedback yet</h3>
+            <p>Feedback customers leave after registering, or from their account, will appear here.</p>
+        </div>
+    </div>
+}
+else
+{
+    @foreach (var feedback in Model.Items)
+    {
+        <div class="panel mb-3">
+            <div class="panel-body">
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                    <div>
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <strong style="color:var(--wood-900);">@feedback.AuthorName</strong>
+                            @if (feedback.FromWelcomePrompt)
+                            {
+                                <span class="badge badge-soft">New customer welcome</span>
+                            }
+                        </div>
+                        <div class="small text-muted-wood mt-1">
+                            @feedback.CreatedDate.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt")
+                        </div>
+                    </div>
+
+                    <partial name="_StarRating" model="(decimal)feedback.Rating"
+                             view-data='new ViewDataDictionary(ViewData) { { "ShowCount", false }, { "ShowValue", false }, { "Size", "1rem" } }' />
+                </div>
+
+                <p class="mb-3" style="white-space:pre-line;font-size:.94rem;line-height:1.65;">@feedback.Comment</p>
+
+                <form asp-action="Respond" asp-route-id="@feedback.SiteFeedbackId" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-2">
+                        <label class="form-label small" for="response-@feedback.SiteFeedbackId">
+                            Internal note / response (optional)
+                        </label>
+                        <textarea id="response-@feedback.SiteFeedbackId" name="adminResponse" rows="2"
+                                  class="form-control form-control-sm" maxlength="500"
+                                  placeholder="Not shown publicly">@feedback.AdminResponse</textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-sm btn-outline-wood" data-busy-text="Saving...">
+                        Save Note
+                    </button>
+                </form>
+
+                <form asp-action="Delete" asp-route-id="@feedback.SiteFeedbackId" method="post" class="mt-2"
+                      data-confirm="This feedback will be permanently deleted. Continue?"
+                      data-confirm-title="Delete feedback">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-link text-danger p-0"
+                            style="font-size:.82rem;">Delete permanently</button>
+                </form>
+            </div>
+        </div>
+    }
+
+    @if (Model.TotalPages > 1)
+    {
+        <nav>
+            <ul class="pagination justify-content-center">
+                @for (var i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.Page ? "active" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@i" asp-route-search="@Model.Search">@i</a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
+}

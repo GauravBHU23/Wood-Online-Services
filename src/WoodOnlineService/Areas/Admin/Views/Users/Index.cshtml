@@ -1,0 +1,127 @@
+@model WoodOnlineService.Areas.Admin.ViewModels.AdminListViewModel<WoodOnlineService.Areas.Admin.ViewModels.UserListItem>
+@{
+    ViewData["Title"] = "Customers";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="mb-1">Customers</h1>
+        <p class="text-muted-wood mb-0">@ViewBag.TotalCustomers registered account@((int)ViewBag.TotalCustomers == 1 ? "" : "s")</p>
+    </div>
+</div>
+
+<div class="panel mb-3">
+    <div class="panel-body py-3">
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <a asp-action="Index" asp-route-search="@Model.Search"
+               class="btn btn-sm @(string.IsNullOrEmpty(Model.Status) ? "btn-wood" : "btn-outline-wood")">All</a>
+            <a asp-action="Index" asp-route-filter="blocked" asp-route-search="@Model.Search"
+               class="btn btn-sm @(Model.Status == "blocked" ? "btn-wood" : "btn-outline-wood")">
+                Blocked (@ViewBag.BlockedCount)
+            </a>
+        </div>
+
+        <form method="get" asp-action="Index" class="row g-2">
+            <input type="hidden" name="filter" value="@Model.Status" />
+            <div class="col-md-9">
+                <input type="search" name="search" value="@Model.Search" class="form-control"
+                       placeholder="Search by name, email or phone..." />
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-wood flex-grow-1" data-busy-text="Searching...">Search</button>
+                @if (!string.IsNullOrWhiteSpace(Model.Search))
+                {
+                    <a asp-action="Index" asp-route-filter="@Model.Status" class="btn btn-outline-secondary">Reset</a>
+                }
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="panel">
+    @if (Model.Items.Count == 0)
+    {
+        <div class="empty-state">
+            <div style="font-size:3rem;">👤</div>
+            <h3>No customers found</h3>
+            <p>Registered customers will appear here.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table table-wood mb-0">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Contact</th>
+                        <th>Location</th>
+                        <th class="text-center">Orders</th>
+                        <th class="text-end">Total Spend</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-end"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in Model.Items)
+                    {
+                        <tr class="@(u.IsBlocked ? "table-danger" : "")">
+                            <td>
+                                <div class="fw-bold small">@u.FullName</div>
+                                <div class="small text-muted-wood">
+                                    Joined @u.CreatedDate.ToLocalTime().ToString("dd MMM yyyy")
+                                </div>
+                            </td>
+                            <td class="small">
+                                <a href="mailto:@u.Email" class="d-block text-truncate" style="max-width:200px;">@u.Email</a>
+                                @if (!string.IsNullOrWhiteSpace(u.PhoneNumber))
+                                {
+                                    <a href="tel:@u.PhoneNumber" class="text-muted-wood">@u.PhoneNumber</a>
+                                }
+                            </td>
+                            <td class="small text-muted-wood">
+                                @(string.IsNullOrWhiteSpace(u.City) ? "—" : $"{u.City}, {u.State}")
+                            </td>
+                            <td class="text-center">@u.OrderCount</td>
+                            <td class="text-end fw-bold">₹@u.TotalSpend.ToString("N0")</td>
+                            <td class="text-center">
+                                @if (u.IsAdmin)
+                                {
+                                    <span class="badge bg-secondary">Admin</span>
+                                }
+                                else if (u.IsBlocked)
+                                {
+                                    <span class="badge bg-danger">Blocked</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <a asp-action="Details" asp-route-id="@u.UserId" class="btn btn-sm btn-outline-wood">View</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="panel-body">
+                <nav>
+                    <ul class="pagination justify-content-center mb-0">
+                        @for (var i = 1; i <= Model.TotalPages; i++)
+                        {
+                            <li class="page-item @(i == Model.Page ? "active" : "")">
+                                <a class="page-link" asp-action="Index" asp-route-page="@i"
+                                   asp-route-filter="@Model.Status" asp-route-search="@Model.Search">@i</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            </div>
+        }
+    }
+</div>

@@ -1,0 +1,109 @@
+@model WoodOnlineService.ViewModels.VerifyOtpViewModel
+@{
+    Layout = "_AdminAuthLayout";
+    ViewData["Title"] = "Verify Code";
+    var returnUrl = ViewData["ReturnUrl"] as string;
+}
+
+<div class="panel">
+    <div class="panel-header text-center">Verify Your Sign-In</div>
+    <div class="panel-body">
+        <p class="text-muted-wood small mb-4 text-center">
+            We emailed a 6-digit code to your admin account's email address.
+            Enter it below to finish signing in. It expires in 10 minutes.
+        </p>
+
+        <form asp-area="Admin" asp-controller="Auth" asp-action="VerifyOtp" asp-route-returnUrl="@returnUrl"
+              method="post" novalidate data-validate-on-submit>
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Token" />
+
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small"></div>
+
+            <div class="mb-3">
+                <label asp-for="Code" class="form-label">6-digit code</label>
+                <input asp-for="Code" class="form-control form-control-lg text-center" type="text"
+                       inputmode="numeric" pattern="\d{6}" maxlength="6" autocomplete="one-time-code"
+                       autofocus style="letter-spacing:.5em;font-size:1.4rem;"
+                       data-validate="required" data-label="Code" />
+                <span asp-validation-for="Code" class="field-validation-error"></span>
+            </div>
+
+            <button type="submit" class="btn btn-wood w-100 btn-lg" data-busy-text="Verifying...">
+                Verify &amp; Sign In
+            </button>
+        </form>
+
+        <div class="text-center mt-3">
+            <button type="button" id="resendOtpBtn" class="btn btn-outline-wood btn-sm" disabled>
+                Resend code <span id="resendCountdown">(3:00)</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<p class="text-center small mt-3" style="color:var(--wood-200,#e5d3c0);">
+    Code not arriving? <a asp-area="Admin" asp-controller="Auth" asp-action="Login" style="color:#fff;">Start over</a> to get a new one.
+</p>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            var COOLDOWN_SECONDS = 180;
+            var btn = document.getElementById('resendOtpBtn');
+            var countdownEl = document.getElementById('resendCountdown');
+            var tokenInput = document.querySelector('input[name="Token"]');
+            var remaining = COOLDOWN_SECONDS;
+            var timer = null;
+
+            function formatTime(sec) {
+                var m = Math.floor(sec / 60);
+                var s = sec % 60;
+                return '(' + m + ':' + (s < 10 ? '0' : '') + s + ')';
+            }
+
+            function tick() {
+                remaining--;
+                if (remaining <= 0) {
+                    clearInterval(timer);
+                    btn.disabled = false;
+                    countdownEl.textContent = '';
+                    return;
+                }
+                countdownEl.textContent = formatTime(remaining);
+            }
+
+            function startCountdown(seconds) {
+                remaining = seconds;
+                btn.disabled = true;
+                countdownEl.textContent = formatTime(remaining);
+                clearInterval(timer);
+                timer = setInterval(tick, 1000);
+            }
+
+            startCountdown(COOLDOWN_SECONDS);
+
+            btn.addEventListener('click', async function () {
+                var restore = WOS.buttonBusy(btn, 'Sending...');
+
+                var response = await WOS.api('/Admin/Auth/ResendOtp', {
+                    method: 'POST',
+                    body: { token: tokenInput.value }
+                });
+
+                restore();
+
+                if (response.ok && response.data && response.data.success) {
+                    tokenInput.value = response.data.token;
+                    WOS.toast('A new code has been sent to your email.', 'success');
+                    startCountdown(COOLDOWN_SECONDS);
+                } else if (response.data && typeof response.data.secondsRemaining === 'number' && response.data.secondsRemaining > 0) {
+                    startCountdown(response.data.secondsRemaining);
+                } else {
+                    WOS.error((response.data && response.data.message) || 'Could not resend the code. Please sign in again.');
+                }
+            });
+        })();
+    </script>
+}

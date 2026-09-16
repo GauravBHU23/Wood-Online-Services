@@ -13,6 +13,7 @@
     var newInquiries = await Db.Inquiries.CountAsync(i => i.Status == InquiryStatus.New);
     var pendingOrders = await Db.Orders.CountAsync(o => o.OrderStatus == OrderStatus.Pending);
     var pendingReviews = await Db.Reviews.CountAsync(r => r.Status == ReviewStatus.Pending);
+    var feedbackCount = await Db.SiteFeedbacks.CountAsync();
 
     string NavClass(string name) => controller.Equals(name, StringComparison.OrdinalIgnoreCase) ? "nav-link active" : "nav-link";
 }
@@ -25,6 +26,7 @@
     <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
@@ -35,11 +37,18 @@
                 <span class="badge badge-wood">ADMIN</span>
             </a>
 
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNav" aria-label="Menu">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            <div class="d-flex align-items-center gap-2 order-lg-2">
+                <button class="admin-account-toggler d-lg-none" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#adminNav" aria-label="Account menu">
+                    👤
+                </button>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminSidebar"
+                        aria-label="Menu" aria-expanded="false" aria-controls="adminSidebar">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
 
-            <div class="collapse navbar-collapse" id="adminNav">
+            <div class="collapse navbar-collapse order-lg-1" id="adminNav">
                 <ul class="navbar-nav ms-auto align-items-lg-center">
                     <li class="nav-item">
                         <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index" target="_blank">
@@ -55,7 +64,7 @@
                             <li><a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="ChangePassword">Change Password</a></li>
                             <li><hr class="dropdown-divider" /></li>
                             <li>
-                                <form asp-area="" asp-controller="Account" asp-action="Logout" method="post" class="px-1">
+                                <form asp-area="Admin" asp-controller="Auth" asp-action="Logout" method="post" class="px-1">
                                     <button type="submit" class="dropdown-item">Logout</button>
                                 </form>
                             </li>
@@ -69,7 +78,7 @@
     <div class="container-fluid px-3 px-lg-4 py-4">
         <div class="row g-4">
             <aside class="col-lg-2 no-print">
-                <div class="admin-sidebar">
+                <div class="collapse d-lg-block admin-sidebar" id="adminSidebar">
                     <nav class="nav flex-column">
                         <div class="sidebar-heading">Overview</div>
                         <a class="@NavClass("Dashboard")" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
@@ -85,6 +94,9 @@
                         </a>
 
                         <div class="sidebar-heading">Customers</div>
+                        <a class="@NavClass("Users")" asp-area="Admin" asp-controller="Users" asp-action="Index">
+                            👤 Customers
+                        </a>
                         <a class="@NavClass("Orders")" asp-area="Admin" asp-controller="Orders" asp-action="Index">
                             📦 Orders
                             @if (pendingOrders > 0)
@@ -106,24 +118,30 @@
                                 <span class="badge bg-warning text-dark ms-auto">@pendingReviews</span>
                             }
                         </a>
+                        <a class="@NavClass("Feedback")" asp-area="Admin" asp-controller="Feedback" asp-action="Index">
+                            💌 Feedback
+                            @if (feedbackCount > 0)
+                            {
+                                <span class="badge bg-secondary ms-auto">@feedbackCount</span>
+                            }
+                        </a>
                     </nav>
                 </div>
             </aside>
 
             <div class="col-lg-10">
+                @* Replayed as a toast by site.js rather than a static alert, same as the customer-facing pages. *@
                 @if (TempData["Success"] is string ok)
                 {
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        ✅ @ok
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
+                    <div data-flash="success" hidden>@ok</div>
                 }
                 @if (TempData["Error"] is string err)
                 {
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        ⚠️ @err
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
+                    <div data-flash="error" hidden>@err</div>
+                }
+                @if (TempData["Info"] is string info)
+                {
+                    <div data-flash="info" hidden>@info</div>
                 }
 
                 @RenderBody()
@@ -135,6 +153,8 @@
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
     <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+    <script src="~/js/notify.js" asp-append-version="true"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

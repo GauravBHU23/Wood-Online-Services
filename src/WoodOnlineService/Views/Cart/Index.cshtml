@@ -33,9 +33,10 @@
                 <div class="panel">
                     <div class="panel-header d-flex justify-content-between align-items-center">
                         <span>Cart Items</span>
-                        <form asp-action="Clear" method="post" onsubmit="return confirm('Empty your entire cart?');">
+                        <form asp-action="Clear" method="post"
+                              data-confirm="Empty your entire cart?" data-confirm-title="Clear cart">
                             @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-sm btn-outline-danger">Clear Cart</button>
+                            <button type="submit" class="btn btn-sm btn-outline-danger" data-busy-text="Clearing...">Clear Cart</button>
                         </form>
                     </div>
 
@@ -88,7 +89,7 @@
                                             <form asp-action="Remove" method="post">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="productId" value="@line.Product.ProductId" />
-                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove">✕</button>
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove" data-busy-text="...">✕</button>
                                             </form>
                                         </td>
                                     </tr>

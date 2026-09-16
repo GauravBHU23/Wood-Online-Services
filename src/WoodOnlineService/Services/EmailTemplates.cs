@@ -84,6 +84,19 @@ public static class EmailTemplates
         </table>
         """;
 
+    /// <summary>A large, letter-spaced code block for OTPs — easier to read and copy than InfoBox's smaller text.</summary>
+    public static string CodeBox(string code) =>
+        $"""
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+               style="background:{Cream};border:1px solid {Line};border-radius:8px;margin:0 0 18px;">
+          <tr><td style="padding:20px;text-align:center;">
+            <div style="font-size:34px;font-weight:700;color:{BrandDark};letter-spacing:10px;font-family:'Courier New',monospace;">
+              {E(code)}
+            </div>
+          </td></tr>
+        </table>
+        """;
+
     public static string OrderItemsTable(Order order)
     {
         var rows = new StringBuilder();

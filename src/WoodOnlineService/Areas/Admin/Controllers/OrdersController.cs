@@ -137,7 +137,7 @@ public class OrdersController : AdminBaseController
         if (statusChanged)
         {
             await _notify.NotifyOrderStatusAsync(order, order.User?.Email);
-            _logger.LogInformation("Order {OrderNumber} status set to {Status} kiya", order.OrderNumber, orderStatus);
+            _logger.LogInformation("Order {OrderNumber} status set to {Status}", order.OrderNumber, orderStatus);
         }
 
         TempData["Success"] = $"Order {order.OrderNumber} has been updated.";

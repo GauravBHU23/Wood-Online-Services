@@ -1,0 +1,31 @@
+import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
+import { ChatWidget } from "@/components/chat/chat-widget";
+import { getSiteSettingsPublic } from "@/lib/data/site-settings";
+
+// Full site chrome (header, footer, chat widget) — everything under the (site) route group.
+// /admin/login and /admin/verify-otp intentionally live outside this group so they get the
+// minimal _AdminAuthLayout-equivalent instead (see app/admin/(auth)/layout.tsx).
+export default async function SiteLayout({ children }: { children: React.ReactNode }) {
+  const site = await getSiteSettingsPublic();
+
+  return (
+    <>
+      <a href="#mainContent" className="visually-hidden-focusable skip-link">
+        Skip to main content
+      </a>
+
+      <div id="offlineBanner" className="offline-banner" role="status">
+        You are offline. Some features are unavailable.
+      </div>
+
+      <Header />
+
+      <main id="mainContent">{children}</main>
+
+      <Footer />
+
+      <ChatWidget shopName={site.shop_name} whatsappNumber={site.whatsapp_number} />
+    </>
+  );
+}

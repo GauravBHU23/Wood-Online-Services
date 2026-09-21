@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img">
+<defs><linearGradient id="cstorage" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0%" stop-color="#7d5535"/><stop offset="100%" stop-color="#3f2817"/></linearGradient></defs>
+<rect width="128" height="128" rx="20" fill="url(#cstorage)"/>
+<path d="M32,26 h64 v76 h-64z M64,26 v76 M40,60 h8 M80,60 h8" fill="none" stroke="#f6ead5" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

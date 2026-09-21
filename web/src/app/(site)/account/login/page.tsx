@@ -1,0 +1,13 @@
+import type { Metadata } from "next";
+import { LoginForm } from "./login-form";
+
+export const metadata: Metadata = { title: "Sign In" };
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ returnUrl?: string }>;
+}) {
+  const { returnUrl } = await searchParams;
+  return <LoginForm returnUrl={returnUrl} />;
+}

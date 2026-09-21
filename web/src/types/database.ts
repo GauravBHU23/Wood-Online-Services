@@ -59,6 +59,28 @@ export interface Database {
         Relationships: [];
       };
 
+      login_lockouts: {
+        Row: {
+          email: string;
+          failed_login_attempts: number;
+          locked_until: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          email: string;
+          failed_login_attempts?: number;
+          locked_until?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          email?: string;
+          failed_login_attempts?: number;
+          locked_until?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+
       categories: {
         Row: {
           id: number;

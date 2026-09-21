@@ -188,10 +188,57 @@ export async function getFeaturedProducts(limit = 8): Promise<ProductWithCategor
     .select("*, category:categories(*)")
     .eq("is_available", true)
     .eq("is_featured", true)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  return (data ?? []) as ProductWithCategory[];
+}
+
+export async function getLatestProducts(limit = 4): Promise<ProductWithCategory[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("products")
+    .select("*, category:categories(*)")
+    .eq("is_available", true)
     .order("id", { ascending: false })
     .limit(limit);
 
   return (data ?? []) as ProductWithCategory[];
+}
+
+export async function getTopRatedProducts(limit = 4): Promise<ProductWithCategory[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("products")
+    .select("*, category:categories(*)")
+    .eq("is_available", true)
+    .gt("review_count", 0)
+    .order("average_rating", { ascending: false })
+    .order("review_count", { ascending: false })
+    .limit(limit);
+
+  return (data ?? []) as ProductWithCategory[];
+}
+
+export interface CategoryWithCount extends Category {
+  productCount: number;
+}
+
+/** Active categories with their available-product count, for the home page category grid. */
+export async function getCategoriesWithCounts(): Promise<CategoryWithCount[]> {
+  const supabase = await createClient();
+  const categoriesResult = await supabase.from("categories").select("*").eq("is_active", true).order("display_order");
+  const categories: Category[] = categoriesResult.data ?? [];
+
+  const countsResult = await supabase.from("products").select("category_id").eq("is_available", true);
+  const countRows: { category_id: number }[] = countsResult.data ?? [];
+
+  const counts = new Map<number, number>();
+  for (const row of countRows) {
+    counts.set(row.category_id, (counts.get(row.category_id) ?? 0) + 1);
+  }
+
+  return categories.map((c) => ({ ...c, productCount: counts.get(c.id) ?? 0 }));
 }
 
 export async function getActiveCategories(): Promise<Category[]> {

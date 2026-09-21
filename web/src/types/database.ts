@@ -827,6 +827,21 @@ export interface Database {
         Args: Record<string, never>;
         Returns: boolean;
       };
+      place_order: {
+        Args: {
+          p_user_id: string;
+          p_cart_key: string;
+          p_shipping_name: string;
+          p_shipping_phone: string;
+          p_shipping_address: string;
+          p_shipping_city: string;
+          p_shipping_state: string;
+          p_shipping_pin_code: string;
+          p_notes: string | null;
+          p_payment_method: PaymentMethod;
+        };
+        Returns: Database["public"]["Tables"]["orders"]["Row"];
+      };
     };
   };
 }

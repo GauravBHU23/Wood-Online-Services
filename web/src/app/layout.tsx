@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ToastProvider } from "@/components/ui/toast-provider";
+import { ConfirmProvider } from "@/components/ui/confirm-modal";
 import { FlashMessages } from "@/components/layout/flash-messages";
 import { readAndClearFlashes } from "@/lib/flash";
 import { getSiteSettingsPublic } from "@/lib/data/site-settings";
@@ -31,8 +32,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en">
       <body>
         <ToastProvider>
-          <FlashMessages flashes={flashes} />
-          {children}
+          <ConfirmProvider>
+            <FlashMessages flashes={flashes} />
+            {children}
+          </ConfirmProvider>
         </ToastProvider>
       </body>
     </html>

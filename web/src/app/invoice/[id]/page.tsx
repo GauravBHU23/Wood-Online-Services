@@ -1,0 +1,50 @@
+import type { Metadata } from "next";
+import { redirect, notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getOrderById } from "@/lib/data/orders";
+import { getSiteSettingsFull } from "@/lib/data/site-settings";
+import { buildInvoice } from "@/lib/data/invoice";
+import { InvoiceSheet } from "./invoice-sheet";
+import { InvoiceActions } from "./invoice-actions";
+import "@/styles/invoice.css";
+
+interface PageParams {
+  id: string;
+}
+
+export async function generateMetadata({ params }: { params: Promise<PageParams> }): Promise<Metadata> {
+  const { id } = await params;
+  return { title: `Invoice — Order ${id}` };
+}
+
+// Ported from Controllers/OrdersController.cs#Invoice + Views/Orders/Invoice.cshtml +
+// Views/Shared/_Invoice.cshtml. Layout = null in the original (a standalone printable page,
+// no site header/footer) — matched here by living outside the (site) route group's chrome.
+export default async function InvoicePage({ params }: { params: Promise<PageParams> }) {
+  const { id } = await params;
+  const orderId = Number(id);
+  if (!Number.isInteger(orderId) || orderId <= 0) notFound();
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(`/account/login?returnUrl=${encodeURIComponent(`/invoice/${id}`)}`);
+
+  const [order, site] = await Promise.all([getOrderById(orderId, user.id), getSiteSettingsFull()]);
+  if (!order || !site) notFound();
+
+  const invoice = buildInvoice(order, site);
+
+  const admin = createAdminClient();
+  const buyerResult = await admin.auth.admin.getUserById(order.user_id);
+  const buyerEmail = buyerResult.data.user?.email ?? null;
+
+  return (
+    <div style={{ background: "#f4efe6", padding: "20px 12px", minHeight: "100vh" }}>
+      <InvoiceActions orderId={order.id} />
+      <InvoiceSheet order={order} invoice={invoice} site={site} buyerEmail={buyerEmail} />
+    </div>
+  );
+}

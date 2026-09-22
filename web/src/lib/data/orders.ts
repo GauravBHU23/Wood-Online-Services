@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCartKey } from "@/lib/data/cart";
-import type { Database } from "@/types/database";
+import type { Database, OrderStatus as DbOrderStatus } from "@/types/database";
 import type { AddressInput } from "@/lib/validation/schemas";
 
 // Ported from Services/OrderService.cs. Order placement itself runs as one Postgres function
@@ -12,6 +12,7 @@ import type { AddressInput } from "@/lib/validation/schemas";
 export type Order = Database["public"]["Tables"]["orders"]["Row"];
 export type OrderItem = Database["public"]["Tables"]["order_items"]["Row"];
 export type OrderWithItems = Order & { items: OrderItem[] };
+export type OrderStatus = DbOrderStatus;
 
 export class PlaceOrderError extends Error {}
 

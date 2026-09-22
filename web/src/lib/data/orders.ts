@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCartKey } from "@/lib/data/cart";
+import { getOrCreateCartKey } from "@/lib/data/cart";
 import type { Database, OrderStatus as DbOrderStatus } from "@/types/database";
 import type { AddressInput } from "@/lib/validation/schemas";
 
@@ -21,7 +21,10 @@ export async function placeOrder(
   address: AddressInput,
   paymentMethod: "cod" | "online"
 ): Promise<Order> {
-  const { key: cartKey } = await getCartKey();
+  // Checkout requires a signed-in user, so this always resolves to `user:${userId}` — never
+  // the guest-cookie branch — but call the creating variant for type-safety (non-null key)
+  // since this runs inside a Server Action anyway.
+  const { key: cartKey } = await getOrCreateCartKey();
   const admin = createAdminClient();
 
   const result = await admin.rpc("place_order", {

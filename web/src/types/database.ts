@@ -81,6 +81,28 @@ export interface Database {
         Relationships: [];
       };
 
+      rate_limits: {
+        Row: {
+          client_key: string;
+          policy: string;
+          window_start: string;
+          request_count: number;
+        };
+        Insert: {
+          client_key: string;
+          policy: string;
+          window_start?: string;
+          request_count?: number;
+        };
+        Update: {
+          client_key?: string;
+          policy?: string;
+          window_start?: string;
+          request_count?: number;
+        };
+        Relationships: [];
+      };
+
       categories: {
         Row: {
           id: number;
@@ -845,6 +867,19 @@ export interface Database {
           p_payment_method: PaymentMethod;
         };
         Returns: Database["public"]["Tables"]["orders"]["Row"];
+      };
+      check_rate_limit: {
+        Args: {
+          p_client_key: string;
+          p_policy: string;
+          p_limit: number;
+          p_window_seconds: number;
+        };
+        Returns: { allowed: boolean; remaining: number; retry_after_seconds: number }[];
+      };
+      cleanup_rate_limits: {
+        Args: Record<string, never>;
+        Returns: undefined;
       };
     };
   };

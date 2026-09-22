@@ -11,6 +11,7 @@ import { getSiteSettingsPublic, toEmailConfig } from "@/lib/data/site-settings";
 import { notifyOrderPlaced, notifyPaymentSuccess, notifyPaymentFailed } from "@/lib/email/service";
 import type { Database } from "@/types/database";
 import type { Order } from "@/lib/data/orders";
+import { enforceSensitiveRateLimit } from "@/lib/rate-limit";
 
 // Ported from Controllers/CheckoutController.cs.
 
@@ -48,6 +49,9 @@ export async function placeOrderAction(
   input: CheckoutInput,
   saveAddress: boolean
 ): Promise<PlaceOrderResult> {
+  const limited = await enforceSensitiveRateLimit();
+  if (limited) return limited;
+
   const parsed = checkoutSchema.safeParse(input);
   if (!parsed.success) {
     return { success: false, message: parsed.error.issues[0]?.message ?? "Please correct the highlighted fields and try again." };
@@ -152,6 +156,9 @@ export interface SimulatedOutcomeResult {
 }
 
 export async function applySimulatedOutcomeAction(requestId: string, outcome: "success" | "fail", method?: string): Promise<SimulatedOutcomeResult> {
+  const limited = await enforceSensitiveRateLimit();
+  if (limited) return { ...limited, redirectTo: "/orders" };
+
   if (!cashfree.isSimulated()) return { success: false, message: "Not available.", redirectTo: "/orders" };
 
   const supabase = await createClient();
@@ -223,6 +230,9 @@ export async function applySimulatedOutcomeAction(requestId: string, outcome: "s
 }
 
 export async function retryPaymentAction(orderId: number): Promise<PlaceOrderResult> {
+  const limited = await enforceSensitiveRateLimit();
+  if (limited) return limited;
+
   const supabase = await createClient();
   const {
     data: { user },

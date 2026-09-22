@@ -10,6 +10,7 @@ import { registerSchema, loginSchema, type RegisterInput, type LoginInput } from
 import { checkLockout, recordFailedAttempt, recordSuccessfulLogin } from "@/lib/auth/lockout";
 import * as suspiciousActivity from "@/lib/auth/suspicious-activity";
 import { LOCKOUT_MINUTES } from "@/lib/auth/constants";
+import { enforceSensitiveRateLimit } from "@/lib/rate-limit";
 import { getSiteSettingsPublic, toEmailConfig } from "@/lib/data/site-settings";
 import { notifyWelcome } from "@/lib/email/service";
 import type { Database } from "@/types/database";
@@ -21,6 +22,9 @@ import type { ActionResult } from "@/lib/auth/types";
 // built-in equivalent of either.
 
 export async function registerAction(input: RegisterInput): Promise<ActionResult> {
+  const limited = await enforceSensitiveRateLimit();
+  if (limited) return limited;
+
   const parsed = registerSchema.safeParse(input);
   if (!parsed.success) {
     return { success: false, message: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };
@@ -79,6 +83,9 @@ export async function registerAction(input: RegisterInput): Promise<ActionResult
 }
 
 export async function loginAction(input: LoginInput): Promise<ActionResult> {
+  const limited = await enforceSensitiveRateLimit();
+  if (limited) return limited;
+
   const parsed = loginSchema.safeParse(input);
   if (!parsed.success) {
     return { success: false, message: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };

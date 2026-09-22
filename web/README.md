@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Wood Online Service — web
 
-## Getting Started
+Next.js (App Router) + TypeScript + Supabase rewrite of the ASP.NET Core 8 MVC app in
+`../src/WoodOnlineService`. See [`MIGRATION_PLAN.md`](./MIGRATION_PLAN.md) for the full
+phase-by-phase log, architecture notes, and the "before going live" checklist — read that first
+when resuming work here.
 
-First, run the development server:
+## Local development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Requires `.env.local` (gitignored) with real values — copy `.env.example` and fill it in. See
+`MIGRATION_PLAN.md` for what each variable does and where to get it.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build   # production build — also the most reliable way to catch type errors
+npm run start   # run the production build locally
+npx tsc --noEmit
+npx eslint .
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Database
 
-## Learn More
+All schema/RLS/seed data lives in `supabase/migrations/*.sql`, applied in filename order. Apply
+them either with the Supabase CLI (`npx supabase link --project-ref <ref>` once, then
+`npx supabase db push`) or by pasting each file into the project's SQL Editor in order, oldest
+first. After the first deploy, promote one account to admin:
 
-To learn more about Next.js, take a look at the following resources:
+```sql
+update public.profiles set role = 'admin' where id = '<the auth.users.id>';
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploying to Vercel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Push this repo to GitHub (already the case if you're reading this from a clone).
+2. In the [Vercel dashboard](https://vercel.com/new), import the repository. When asked for the
+   **Root Directory**, set it to `web` (this repo also contains the old, untouched .NET app at
+   the repo root — Vercel must build only this folder).
+3. Framework preset: Next.js (auto-detected). Build/output settings: leave at the defaults.
+4. Add every variable from `.env.example` as a Vercel **Environment Variable** (Project Settings →
+   Environment Variables), using your real Supabase/Cashfree/SMTP values — not the placeholders.
+   Set `NEXT_PUBLIC_SITE_URL` to the real `https://your-domain` once you know it (a Vercel preview
+   URL works too, but Cashfree Live mode needs a stable public domain — see the checklist below).
+5. Deploy. Vercel reads `vercel.json` automatically, which schedules
+   `api/cron/reconcile-payments` every 5 minutes via Vercel Cron — no extra setup needed there
+   beyond `CRON_SECRET` being set (step 4).
+6. Once live, run through `MIGRATION_PLAN.md`'s "Before going live" checklist for anything not
+   already ticked off (Cashfree Live mode, first real end-to-end order, etc.).
 
-## Deploy on Vercel
+Alternatively, from the CLI (`npx vercel login` then, from this `web/` directory,
+`npx vercel --prod`) — the dashboard import is usually simpler for the Root Directory step above.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Conventions
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See the "Conventions kept consistent throughout" section of `MIGRATION_PLAN.md` — API response
+shape, money handling, RLS as the authorization boundary, Bootstrap 5 (not Tailwind) for styling.

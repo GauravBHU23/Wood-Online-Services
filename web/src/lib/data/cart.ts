@@ -40,8 +40,13 @@ export interface CartSummary {
   isEmpty: boolean;
 }
 
-/** Returns the current cart_key, creating and setting the guest cookie if needed. */
-export async function getCartKey(): Promise<{ key: string; userId: string | null }> {
+/**
+ * Returns the current cart_key WITHOUT writing anything. Safe to call from a Server Component
+ * render (e.g. Header on every page) since Next.js forbids setting cookies outside a Server
+ * Action/Route Handler. A guest who has no cookie yet simply reads as an empty cart — the cookie
+ * gets minted the first time they actually mutate the cart (see getOrCreateCartKey below).
+ */
+export async function getCartKey(): Promise<{ key: string | null; userId: string | null }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -53,10 +58,20 @@ export async function getCartKey(): Promise<{ key: string; userId: string | null
 
   const cookieStore = await cookies();
   const existing = cookieStore.get(GUEST_CART_COOKIE)?.value;
-  if (existing) {
-    return { key: `guest:${existing}`, userId: null };
-  }
+  return { key: existing ? `guest:${existing}` : null, userId: null };
+}
 
+/**
+ * Same as getCartKey, but creates and persists a fresh guest cookie when one doesn't exist yet.
+ * Only call this from a Server Action or Route Handler (cart add/update/remove/read-for-checkout)
+ * — never from a Server Component render path, or Next.js throws "Cookies can only be modified
+ * in a Server Action or Route Handler".
+ */
+export async function getOrCreateCartKey(): Promise<{ key: string; userId: string | null }> {
+  const { key, userId } = await getCartKey();
+  if (key) return { key, userId };
+
+  const cookieStore = await cookies();
   const fresh = randomUUID().replace(/-/g, "");
   cookieStore.set(GUEST_CART_COOKIE, fresh, {
     httpOnly: true,
@@ -86,8 +101,18 @@ async function shippingConfig(): Promise<{ shippingCharge: number; freeShippingA
   };
 }
 
+const EMPTY_CART: CartSummary = {
+  lines: [],
+  subTotal: 0,
+  shippingCharge: 0,
+  total: 0,
+  itemCount: 0,
+  isEmpty: true,
+};
+
 export async function getCart(): Promise<CartSummary> {
   const { key, userId } = await getCartKey();
+  if (!key) return EMPTY_CART;
   const supabase = await clientFor(userId);
 
   const result = await supabase
@@ -137,6 +162,7 @@ export async function getCart(): Promise<CartSummary> {
 
 export async function getCartCount(): Promise<number> {
   const { key, userId } = await getCartKey();
+  if (!key) return 0;
   const supabase = await clientFor(userId);
   const result = await supabase.from("cart_items").select("quantity").eq("cart_key", key);
   const rows: Pick<CartItemRow, "quantity">[] = result.data ?? [];
@@ -145,7 +171,7 @@ export async function getCartCount(): Promise<number> {
 
 export async function addToCart(productId: number, quantity: number) {
   const qty = Math.max(1, quantity);
-  const { key, userId } = await getCartKey();
+  const { key, userId } = await getOrCreateCartKey();
   const supabase = await clientFor(userId);
   const admin = createAdminClient();
 
@@ -188,7 +214,7 @@ export async function addToCart(productId: number, quantity: number) {
 }
 
 export async function updateCartQuantity(productId: number, quantity: number) {
-  const { key, userId } = await getCartKey();
+  const { key, userId } = await getOrCreateCartKey();
   const supabase = await clientFor(userId);
 
   if (quantity < 1) {
@@ -212,7 +238,7 @@ export async function updateCartQuantity(productId: number, quantity: number) {
 }
 
 export async function removeFromCart(productId: number) {
-  const { key, userId } = await getCartKey();
+  const { key, userId } = await getOrCreateCartKey();
   const supabase = await clientFor(userId);
   await supabase.from("cart_items").delete().eq("cart_key", key).eq("product_id", productId);
 }

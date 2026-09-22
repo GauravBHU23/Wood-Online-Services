@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { ConfirmProvider } from "@/components/ui/confirm-modal";
@@ -14,7 +14,6 @@ export async function generateMetadata(): Promise<Metadata> {
     title: { default: site.shop_name, template: `%s — ${site.shop_name}` },
     description: site.tagline,
     authors: [{ name: "Er Gaurav Kumar" }],
-    themeColor: "#6d4423",
     icons: { icon: "/img/favicon.svg", apple: "/img/icon-192.png" },
     manifest: site.feature_pwa ? "/manifest.webmanifest" : undefined,
     openGraph: {
@@ -25,6 +24,10 @@ export async function generateMetadata(): Promise<Metadata> {
     },
   };
 }
+
+export const viewport: Viewport = {
+  themeColor: "#6d4423",
+};
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const flashes = await readAndClearFlashes();

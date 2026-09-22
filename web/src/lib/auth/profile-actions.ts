@@ -15,6 +15,7 @@ import { getSiteSettingsPublic, toEmailConfig } from "@/lib/data/site-settings";
 import { notifyPasswordReset } from "@/lib/email/service";
 import type { ActionResult } from "@/lib/auth/types";
 import type { Database } from "@/types/database";
+import { enforceSensitiveRateLimit } from "@/lib/rate-limit";
 
 // Ported from Controllers/AccountController.cs (Profile, ChangePassword, ForgotPassword).
 
@@ -49,6 +50,9 @@ export async function updateProfileAction(input: ProfileInput): Promise<ActionRe
 }
 
 export async function changePasswordAction(input: ChangePasswordInput): Promise<ActionResult> {
+  const limited = await enforceSensitiveRateLimit();
+  if (limited) return limited;
+
   const parsed = changePasswordSchema.safeParse(input);
   if (!parsed.success) {
     return { success: false, message: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };
@@ -89,6 +93,9 @@ export async function changePasswordAction(input: ChangePasswordInput): Promise<
 }
 
 export async function forgotPasswordAction(input: ForgotPasswordInput): Promise<ActionResult> {
+  const limited = await enforceSensitiveRateLimit();
+  if (limited) return limited;
+
   const parsed = forgotPasswordSchema.safeParse(input);
   if (!parsed.success) {
     return { success: false, message: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };

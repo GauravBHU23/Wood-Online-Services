@@ -7,13 +7,16 @@ The old app stays untouched during the migration — nothing here modifies `src/
 It is the reference for every business rule; when in doubt, that codebase is correct and this
 one should match it, not the other way round.
 
-## Status: Phases 1–7 done. Only Phase 8 (hardening, before going live) remains.
+## Status: Phases 1–7 done. Phase 8 (hardening) done except deploying and Cashfree Live mode.
 
 Every customer-facing flow, the full admin panel, payments, email, chatbot, and PWA support are
-built and ported feature-for-feature from the original. **No Supabase project exists yet** —
-nothing has been run against a live database. `npm run build` / `npx tsc --noEmit` / `npx eslint`
-all pass clean as of the last commit, which only proves the TypeScript/Next.js side compiles —
-see "Before going live" below for what's still needed to actually run this.
+built and ported feature-for-feature from the original. **A real Supabase project exists**
+(`tixrybyedvarwsmgoqef`) with migrations 0001–0007 applied and verified against live data;
+migration 0008 (rate limiting) is written but not yet applied — see its own note below. `npm run
+build` / `npx tsc --noEmit` / `npx eslint` all pass clean, and the app has been smoke-tested
+end-to-end locally in both `next dev` and `next start` (production build) against the real
+database. Not yet deployed to Vercel — that's the only remaining step for a working site; Cashfree
+stays in `simulated` mode until the user has a live domain and real merchant credentials.
 
 ### Phase 1 — Foundation
 - Supabase schema (`supabase/migrations/0001_init_schema.sql`) — every table from `Models/*.cs`,
@@ -118,41 +121,62 @@ Chaining straight off the optional `data` expression can make TS infer the eleme
 version — real codegen output already follows both rules above, so this class of bug should not
 recur, but reconcile the seed/RLS-only knowledge (doc comments, the `Table`/`View` shape) back in.
 
-## Before going live (Phase 8 — not started)
+## Before going live (Phase 8)
 
-1. **Create the Supabase project** (the user chose "give me code, I'll create the project" back
-   in Phase 1 — this still hasn't happened). Apply all 7 migrations in order (`supabase db push`
-   or paste each into the SQL editor in filename order), then copy the project's URL/anon
-   key/service role key into `.env.local` per `.env.example`.
+1. **Create the Supabase project** — done. Project `tixrybyedvarwsmgoqef`, migrations 0001–0007
+   applied and verified (categories/products/site_settings_public/storage buckets all confirmed
+   via direct REST calls against live data). **Migration `0008_rate_limits.sql` is written but
+   NOT YET applied** — paste it into the SQL Editor (it's additive, safe to run any time; nothing
+   else depends on it existing, since `lib/rate-limit.ts` fails open if the table is missing).
 2. **Manually promote one account to admin** — nothing in the app can do this (by design, so no
    API path can self-elevate). After registering normally, run in the SQL editor:
-   `update public.profiles set role = 'admin' where id = '<the auth.users.id>';`
-3. **First real end-to-end run**: register, browse, add to cart, checkout with
-   `CASHFREE_MODE=simulated`, confirm the order/email/invoice flow, then sign in as the promoted
-   admin and confirm the dashboard/order-status-update flow.
-4. **Rate limiting** — the original had three policies (`general` 100/min, `sensitive` 10/min on
-   login/register/checkout/reviews, `webhook` 300/min), keyed per-user when signed in and per-IP
-   otherwise. Nothing in this port enforces that yet. Decide the mechanism based on where this
-   deploys (Vercel Edge Middleware + Upstash Redis is the natural fit for serverless; a
-   Postgres-table token bucket works anywhere) before this handles real traffic.
-5. **Security headers** — the original set `X-Frame-Options: DENY`, `X-Content-Type-Options:
-   nosniff`, `Referrer-Policy`, `Permissions-Policy`, and a CSP via middleware. Add the
-   equivalent via `next.config.ts`'s `headers()` or `src/proxy.ts`.
-6. **Re-verify every RLS policy** against the finished feature set — policies in `0002` were
-   written before most features existed; check each one still matches how the shipped code
-   actually queries each table.
-7. **Cashfree Live mode checklist** (from the original README, still accurate): deploy behind a
-   public HTTPS domain, set `CASHFREE_MODE=live` + real `CASHFREE_CLIENT_ID`/`CASHFREE_CLIENT_SECRET`,
-   whitelist the domain in the Cashfree dashboard, point its webhook at
-   `{domain}/api/payment/webhook`, place one real low-value test order, confirm it flips to Paid,
-   refund it from the Cashfree dashboard before taking real traffic.
-8. **Wire up the cron secret** — set `CRON_SECRET` in the hosting platform's env vars and confirm
-   `api/cron/reconcile-payments` is actually being called every 5 minutes (Vercel Cron reads
-   `vercel.json` automatically once deployed there; other hosts need their own scheduler pointed
-   at the route).
-9. **PWA icons** — `public/img/icon-192.png`, `icon-512.png`, `icon-maskable-512.png` were copied
-   from the original app's seed assets; replace them if the shop wants its own icon before
-   shipping the installable app.
+   `update public.profiles set role = 'admin' where id = '<the auth.users.id>';` **Still pending**
+   — no admin account has been promoted yet on the live project.
+3. **First real end-to-end run** — done locally (`next dev` and `next start` against the real
+   database): homepage/shop/product pages/cart/account pages all verified 200 with real data.
+   Register → checkout → admin dashboard flow still needs a manual click-through once an admin
+   account exists (step 2).
+4. **Rate limiting** — done. Ported as a Postgres-backed fixed-window limiter (`0008_rate_limits.sql`'s
+   `check_rate_limit()`, called from `lib/rate-limit.ts`) instead of Upstash/Redis, so it works on
+   any host without another paid service. Same three policies and same limits as the original
+   (general 100/min, sensitive 10/min, webhook 300/min), same per-user-else-per-IP partitioning.
+   Route Handlers are matched by path in `src/proxy.ts`; Server Actions (login/register/
+   change-password/forgot-password/place-order/retry-payment) call
+   `enforceSensitiveRateLimit()` at their own top, since a Server Action POSTs to its page's own
+   URL and proxy.ts can't tell it apart from a plain page load by path alone. Fails open (allows
+   the request) if the DB call errors, so a Postgres hiccup degrades to "unlimited", never "down".
+5. **Security headers** — done, ported verbatim from `SecurityHeadersMiddleware.cs` into
+   `src/proxy.ts` (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
+   `Permissions-Policy`, `X-XSS-Protection: 0`, no-store `Cache-Control` on every dynamic
+   response, and the full CSP — Report-Only in dev, enforced in production). `X-Powered-By` is
+   disabled via `next.config.ts`'s `poweredByHeader: false` (Next adds that header after
+   middleware runs, so it can't be stripped from proxy.ts).
+6. **Re-verify every RLS policy** — done. Cross-checked every table's policy in `0002` against
+   how it's actually queried across the shipped code (`grep`-audited every `createClient()` vs
+   `createAdminClient()` call site). No gaps found: customer-facing reads (products, categories,
+   own orders, own cart, approved reviews) go through the RLS-scoped client and are correctly
+   covered by a policy; everything else (admin panel, webhook, guest cart, OTP, visitor tracking)
+   deliberately uses the service-role client and bypasses RLS by design, per the documented
+   convention.
+7. **Cashfree Live mode checklist** (from the original README, still accurate) — **not started**,
+   blocked on the user having a live public domain and real Cashfree merchant credentials:
+   deploy behind a public HTTPS domain, set `CASHFREE_MODE=live` + real
+   `CASHFREE_CLIENT_ID`/`CASHFREE_CLIENT_SECRET`, whitelist the domain in the Cashfree dashboard,
+   point its webhook at `{domain}/api/payment/webhook`, place one real low-value test order,
+   confirm it flips to Paid, refund it from the Cashfree dashboard before taking real traffic.
+   `CASHFREE_MODE=simulated` is fine for launching and taking Cash-on-Delivery orders in the
+   meantime — online payment just won't be available until this is done.
+8. **Wire up the cron secret** — `vercel.json` already schedules `api/cron/reconcile-payments`
+   every 5 minutes via Vercel Cron; just set `CRON_SECRET` as a Vercel environment variable at
+   deploy time (same value as `.env.local`, or a freshly generated one) and confirm the cron
+   fired at least once after deploying (Vercel's dashboard → Cron Jobs tab shows run history).
+9. **PWA icons** — done (not actually a gap): `public/img/icon-192.png`, `icon-512.png`,
+   `icon-maskable-512.png` were copied verbatim from the original app's own assets, which is
+   correct per the "pixel-identical" instruction. Only replace them if the shop later wants a
+   different icon — that's a cosmetic choice, not a completeness item.
+10. **Deploy to Vercel** — not started. See `README.md`'s "Deploying to Vercel" section for the
+    step-by-step (root directory must be set to `web/` in the Vercel project import, since this
+    repo also contains the untouched original .NET app at its root).
 
 ## Conventions kept consistent throughout
 
@@ -169,3 +193,10 @@ recur, but reconcile the seed/RLS-only knowledge (doc comments, the `Table`/`Vie
 - **UI is Bootstrap 5 + the ported `site.css`/`components.css`/`invoice.css`**, not Tailwind
   utility classes — match the existing class names (`.panel`, `.btn-wood`, `.badge-soft`, etc.)
   in any new page rather than introducing a second styling system.
+- **A new Route Handler that should be rate-limited** gets an entry in `src/proxy.ts`'s
+  `API_RATE_LIMITS` array (path prefix → policy). **A new Server Action that should be
+  rate-limited** (anything worth brute-forcing — auth, checkout, review/feedback submission)
+  calls `enforceSensitiveRateLimit()` from `lib/rate-limit.ts` as its very first line and returns
+  immediately if it comes back non-null — see `lib/auth/actions.ts` for the pattern. Don't add a
+  new rate-limit policy without a matching one in the original's `Program.cs` /
+  `[EnableRateLimiting]` attributes; if the original didn't limit it, don't add a policy here either.

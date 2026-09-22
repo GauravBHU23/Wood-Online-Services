@@ -9,6 +9,7 @@ import { ADMIN_LOCKOUT_MINUTES } from "@/lib/auth/constants";
 import { issueAdminOtp, verifyAdminOtp, getOtpUserId } from "@/lib/auth/admin-otp";
 import { loginSchema, verifyOtpSchema, type LoginInput, type VerifyOtpInput } from "@/lib/validation/schemas";
 import type { ActionResult } from "@/lib/auth/types";
+import { enforceSensitiveRateLimit } from "@/lib/rate-limit";
 
 // Ported from Areas/Admin/Controllers/AuthController.cs. Admin sign-in is entirely separate
 // from the customer form: a different password check that rejects any non-Admin account
@@ -19,6 +20,9 @@ export interface AdminLoginResult extends ActionResult {
 }
 
 export async function adminLoginAction(input: LoginInput): Promise<AdminLoginResult> {
+  const limited = await enforceSensitiveRateLimit();
+  if (limited) return limited;
+
   const parsed = loginSchema.safeParse(input);
   if (!parsed.success) {
     return { success: false, message: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };
@@ -83,6 +87,9 @@ export async function adminLoginAction(input: LoginInput): Promise<AdminLoginRes
 }
 
 export async function adminVerifyOtpAction(input: VerifyOtpInput): Promise<ActionResult> {
+  const limited = await enforceSensitiveRateLimit();
+  if (limited) return limited;
+
   const parsed = verifyOtpSchema.safeParse(input);
   if (!parsed.success) {
     return { success: false, message: "Please fix the errors below.", fieldErrors: parsed.error.flatten().fieldErrors };

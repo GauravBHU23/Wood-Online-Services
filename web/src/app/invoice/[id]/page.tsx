@@ -32,12 +32,20 @@ export default async function InvoicePage({ params }: { params: Promise<PagePara
   } = await supabase.auth.getUser();
   if (!user) redirect(`/account/login?returnUrl=${encodeURIComponent(`/invoice/${id}`)}`);
 
-  const [order, site] = await Promise.all([getOrderById(orderId, user.id), getSiteSettingsFull()]);
+  const admin = createAdminClient();
+  const profileResult = await admin.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  const isAdmin = (profileResult.data as { role: "customer" | "admin" } | null)?.role === "admin";
+
+  // Admins may view any order's invoice; customers only their own (RLS-equivalent check done
+  // here explicitly since this route reads via the service role for the admin case).
+  const order = isAdmin
+    ? ((await admin.from("orders").select("*, items:order_items(*)").eq("id", orderId).maybeSingle()).data as Awaited<ReturnType<typeof getOrderById>>)
+    : await getOrderById(orderId, user.id);
+  const site = await getSiteSettingsFull();
   if (!order || !site) notFound();
 
   const invoice = buildInvoice(order, site);
 
-  const admin = createAdminClient();
   const buyerResult = await admin.auth.admin.getUserById(order.user_id);
   const buyerEmail = buyerResult.data.user?.email ?? null;
 

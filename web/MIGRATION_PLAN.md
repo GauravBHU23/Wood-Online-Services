@@ -7,31 +7,84 @@ The old app stays untouched during the migration — nothing here modifies `src/
 It is the reference for every business rule; when in doubt, that codebase is correct and this
 one should match it, not the other way round.
 
-## Status: Phase 1 (foundation) — done
+## Status: Phases 1–7 done. Only Phase 8 (hardening, before going live) remains.
 
-- [x] Next.js 16 App Router + TypeScript + Tailwind scaffolded in `web/`
-- [x] Supabase schema (`web/supabase/migrations/0001_init_schema.sql`) — every table from
-      `Models/*.cs`, enums matching the C# enums, triggers for denormalised rating and
-      auto-created profile row
-- [x] RLS policies (`0002_rls_policies.sql`) — mirrors "every order/review/payment query is
-      scoped by user id" from the old README's security table
-- [x] Seed data (`0003_seed_catalogue.sql`) — the 6 categories / 26 products from `DbSeeder.cs`,
-      verbatim
-- [x] `src/types/database.ts` — hand-written Supabase `Database` type (regenerate against a
-      real project once one exists; see the note at the top of that file about **why** it's
-      hand-rolled the way it is — read that before editing it, there's a sharp edge)
-- [x] Supabase client helpers: `lib/supabase/{client,server,admin,middleware}.ts`
-- [x] `src/proxy.ts` (Next 16's `middleware.ts` replacement) — gates `/account`, `/checkout`,
-      `/orders`, `/admin/**` on having a session; role check happens again server-side
-- [x] `lib/validation/schemas.ts` — zod schemas mirroring the `[StringLength]`/`[RegularExpression]`
-      rules on the C# models, for both client and server validation
-- [x] `lib/api-response.ts` — the `{ success, message }` envelope every API route uses
-- [x] `lib/data/products.ts`, `lib/data/cart.ts` — first two data-access modules, ported from
-      `ShopController` and `Services/CartService.cs`
+Every customer-facing flow, the full admin panel, payments, email, chatbot, and PWA support are
+built and ported feature-for-feature from the original. **No Supabase project exists yet** —
+nothing has been run against a live database. `npm run build` / `npx tsc --noEmit` / `npx eslint`
+all pass clean as of the last commit, which only proves the TypeScript/Next.js side compiles —
+see "Before going live" below for what's still needed to actually run this.
 
-**A real Supabase project does not exist yet.** Nothing has been deployed or run against a live
-database — `npm run build` only proves the TypeScript/Next.js side compiles. See "Before Phase 2"
-below.
+### Phase 1 — Foundation
+- Supabase schema (`supabase/migrations/0001_init_schema.sql`) — every table from `Models/*.cs`,
+  enums matching the C# enums, triggers for denormalised rating and auto-created profile row
+- RLS policies (`0002_rls_policies.sql`), seed data (`0003_seed_catalogue.sql`, the original 6
+  categories / 26 products verbatim)
+- `src/types/database.ts` (hand-written; see the sharp-edge note below), Supabase client helpers,
+  `src/proxy.ts`, zod validation schemas, the `{ success, message }` API envelope
+
+### Phase 2 — Auth + layout shell
+- Register/login/logout/profile/change-password/forgot-reset-password, all on Supabase Auth
+- Per-account lockout + credential-stuffing IP tracking re-implemented (`lib/auth/lockout.ts`,
+  `lib/auth/suspicious-activity.ts`; `login_lockouts` table, migration `0004`, keyed by email)
+- Admin sign-in: separate page, password-then-email-OTP two-factor (`lib/auth/admin-otp.ts`,
+  `admin_login_otps` table)
+- Full header/footer/toast/chat-widget/WhatsApp-float chrome, pixel-matched to the original by
+  porting `site.css`/`components.css`/`invoice.css` verbatim (`src/styles/`) instead of
+  rebuilding the look in Tailwind — **Tailwind was removed**, this app is Bootstrap 5 + those
+  files, same class names throughout (`.panel`, `.btn-wood`, `.wos-toast`, etc.)
+- Email service + all 9 transactional templates (`lib/email/`), keyword-matched chatbot with
+  optional Gemini phrasing (`lib/chatbot/`), visitor tracking + geolocation (`lib/data/visitor.ts`)
+
+### Phase 3 — Catalogue
+- Home, `/shop` (filter/sort/pagination as a plain GET form, works without JS), `/shop/[id]`
+  product detail with gallery, reviews section, inline inquiry form, related products
+- `lib/data/reviews.ts`, `lib/data/inquiries.ts`, cart-add wired end to end
+
+### Phase 4 — Cart, checkout, Cashfree payments
+- Cart page, checkout form, **atomic order placement** via a Postgres function
+  (`place_order()`, migration `0005`) — stock re-check, order + items insert, stock decrement,
+  cart clear all in one transaction, so a crash mid-checkout can't half-apply
+- Cashfree integration (`lib/payments/cashfree.ts`): order creation, hosted-checkout handoff,
+  Simulated/Live/Disabled modes, `liveConfigurationProblem()` localhost-detection guard
+- Webhook (`api/payment/webhook`) — the highest-risk piece, built to match the original exactly:
+  raw body only, HMAC-SHA256(timestamp + rawBody, clientSecret) constant-time verification,
+  ±5-minute freshness window, idempotent against retries, order status only ever advances
+- Payment callback (re-verifies with Cashfree's API, never trusts browser query params),
+  simulated gateway for local dev, status polling, retry-payment
+
+### Phase 5 — Orders, invoice/GST, static pages
+- Order history/detail/cancel/retry, payment-status poller
+- Invoice (`lib/data/invoice.ts`, ported from `InvoiceService.cs`): CGST/SGST/IGST math,
+  inclusive-vs-exclusive GST pricing, inter-state IGST split, Tax/Proforma Invoice title logic,
+  Indian-numbering (lakh/crore) amount-in-words — rendered standalone at `/invoice/[id]`
+  (outside the `(site)` route group, so it has no header/footer, matching `Layout = null`)
+- About, Contact, Thank You, Privacy, Terms, License
+
+### Phase 6 — Admin panel
+- Full shell with live badge counts, role re-verified server-side on every load
+  (`lib/auth/require-admin.ts`) — proxy.ts only gates "is anyone signed in", never the role itself
+- Dashboard, Products (+ Supabase Storage image upload, migration `0006`, with the original's
+  extension allow-list/5MB cap/SVG-sanitization all preserved — `lib/admin/image-service.ts`),
+  Categories, Orders (status update, auto stock return/restore), Inquiries, Reviews (moderation;
+  rating recalculation is now automatic via the DB trigger, not an explicit call), Feedback,
+  Users (block/unblock now uses Supabase Auth's own `ban_duration`/`banned_until`)
+
+### Phase 7 — PWA, welcome feedback prompt, payment reconciliation
+- Welcome feedback prompt modal, shown once after registration (`sessionStorage` flag +
+  `components/shop/feedback-prompt-trigger.tsx`), `api/feedback` + `api/feedback/eligibility`
+- PWA: manifest, service worker (`public/sw.js`, adapted for Next's `/_next/static/` asset
+  paths), offline page, install-prompt UI (`components/layout/pwa-manager.tsx`) — gated by the
+  new `site_settings.feature_pwa` column (migration `0007`, missing from the original's schema
+  port and added here)
+- Payment reconciliation (`lib/payments/reconciliation.ts`, ported from
+  `PaymentReconciliationService.cs`): **this one architecturally differs from the original**,
+  which ran as an in-process `BackgroundService` polling every 5 minutes. Next.js (especially
+  serverless deployments) has no equivalent long-running process, so it's exposed as
+  `api/cron/reconcile-payments`, bearer-token authenticated (`CRON_SECRET`), meant to be called
+  every 5 minutes by an external scheduler — `vercel.json` wires this up for Vercel Cron already;
+  for another host, point any scheduler (Supabase's `pg_cron` + `pg_net`, GitHub Actions, etc.)
+  at that URL with the same header instead
 
 ## A sharp edge you will hit again: postgrest-js + TypeScript
 
@@ -65,98 +118,54 @@ Chaining straight off the optional `data` expression can make TS infer the eleme
 version — real codegen output already follows both rules above, so this class of bug should not
 recur, but reconcile the seed/RLS-only knowledge (doc comments, the `Table`/`View` shape) back in.
 
-## Remaining phases
+## Before going live (Phase 8 — not started)
 
-Rough size estimate per phase in parentheses — this is a large app; expect this to span many
-sessions. Work top-to-bottom; later phases depend on earlier ones.
+1. **Create the Supabase project** (the user chose "give me code, I'll create the project" back
+   in Phase 1 — this still hasn't happened). Apply all 7 migrations in order (`supabase db push`
+   or paste each into the SQL editor in filename order), then copy the project's URL/anon
+   key/service role key into `.env.local` per `.env.example`.
+2. **Manually promote one account to admin** — nothing in the app can do this (by design, so no
+   API path can self-elevate). After registering normally, run in the SQL editor:
+   `update public.profiles set role = 'admin' where id = '<the auth.users.id>';`
+3. **First real end-to-end run**: register, browse, add to cart, checkout with
+   `CASHFREE_MODE=simulated`, confirm the order/email/invoice flow, then sign in as the promoted
+   admin and confirm the dashboard/order-status-update flow.
+4. **Rate limiting** — the original had three policies (`general` 100/min, `sensitive` 10/min on
+   login/register/checkout/reviews, `webhook` 300/min), keyed per-user when signed in and per-IP
+   otherwise. Nothing in this port enforces that yet. Decide the mechanism based on where this
+   deploys (Vercel Edge Middleware + Upstash Redis is the natural fit for serverless; a
+   Postgres-table token bucket works anywhere) before this handles real traffic.
+5. **Security headers** — the original set `X-Frame-Options: DENY`, `X-Content-Type-Options:
+   nosniff`, `Referrer-Policy`, `Permissions-Policy`, and a CSP via middleware. Add the
+   equivalent via `next.config.ts`'s `headers()` or `src/proxy.ts`.
+6. **Re-verify every RLS policy** against the finished feature set — policies in `0002` were
+   written before most features existed; check each one still matches how the shipped code
+   actually queries each table.
+7. **Cashfree Live mode checklist** (from the original README, still accurate): deploy behind a
+   public HTTPS domain, set `CASHFREE_MODE=live` + real `CASHFREE_CLIENT_ID`/`CASHFREE_CLIENT_SECRET`,
+   whitelist the domain in the Cashfree dashboard, point its webhook at
+   `{domain}/api/payment/webhook`, place one real low-value test order, confirm it flips to Paid,
+   refund it from the Cashfree dashboard before taking real traffic.
+8. **Wire up the cron secret** — set `CRON_SECRET` in the hosting platform's env vars and confirm
+   `api/cron/reconcile-payments` is actually being called every 5 minutes (Vercel Cron reads
+   `vercel.json` automatically once deployed there; other hosts need their own scheduler pointed
+   at the route).
+9. **PWA icons** — `public/img/icon-192.png`, `icon-512.png`, `icon-maskable-512.png` were copied
+   from the original app's seed assets; replace them if the shop wants its own icon before
+   shipping the installable app.
 
-### Phase 2 — Auth + layout shell (medium)
-- Supabase project setup instructions for the user (this agent cannot create one) — hand off
-  `.env.example` → `.env.local` with real keys, then apply the 3 migrations via
-  `supabase db push` or the SQL editor
-- Root layout: header (logo, category nav, search, cart badge, account menu), footer (contact,
-  visitor counter, links), matching `Views/Shared/_Layout.cshtml`
-- `/account/register`, `/account/login`, `/account/profile` — Supabase Auth email/password,
-  replaces ASP.NET Identity. Port lockout behaviour (`SecuritySettings.MaxFailedLoginAttempts`,
-  `LockoutMinutes`) — Supabase Auth doesn't do this natively, so it needs a small
-  `failed_login_attempts` counter + check in a server action, or defer to Supabase's own rate
-  limiting and simplify this rule (flag as a decision point, don't guess)
-- Session cookie handling is already wired (`proxy.ts`, `lib/supabase/*`); this phase is mostly
-  UI + the register/login/profile forms and server actions
+## Conventions kept consistent throughout
 
-### Phase 3 — Catalogue (medium)
-- `/` home page: hero, featured products (`getFeaturedProducts`), categories grid
-- `/shop` — full filter/sort/pagination UI over `getShopProducts` (data layer already built)
-- `/shop/[id]` product detail — gallery, spec table, related products
-  (`getRelatedProducts`), inline inquiry form, reviews list — port from `ShopController.Details`
-  (read the rest of that controller past line 140, not yet read in this session)
-- Live search API route (`/api/search`) — debounced autocomplete, port from
-  `Controllers/Api/SearchApiController.cs`
-
-### Phase 4 — Cart + checkout (medium-large, security-relevant)
-- Cart page + add/update/remove server actions (data layer already built in `lib/data/cart.ts`)
-- Checkout: address form (pre-filled from profile), COD vs online payment choice
-- **Cashfree integration** (`lib/payments/cashfree.ts`, ported from `Services/CashfreeService.cs`):
-  order creation, `payment_session_id` handoff to Cashfree's client SDK, `/api/payment/webhook`
-  route with **HMAC-SHA256(timestamp + rawBody, clientSecret)** signature verification exactly as
-  documented in the old README's Payments section — this is the highest-risk piece to get wrong;
-  re-read `Services/CashfreeService.cs` in full again when building this, don't work from memory
-- `PaymentReconciliationService.cs` equivalent — a scheduled job or route that re-queries Cashfree
-  for any transaction stuck `Pending`, since the browser return URL is only ever a hint
-- Order placement (`lib/data/orders.ts`, port of `OrderService.cs`): stock re-check, order number
-  generation, cart clearing, all in one transaction — Postgres doesn't have EF's
-  "retrying execution strategy" concern, but the transaction still needs to be atomic; use a
-  Postgres function (`plpgsql`) called via `rpc()` for this, not multiple round-trips, so a crash
-  mid-checkout can't half-apply
-
-### Phase 5 — Orders, reviews, inquiries (medium)
-- `/orders`, `/orders/[id]` — history, status tracker, cancellation with stock return, invoice
-  view/print (port `InvoiceService.cs`'s GST/CGST/SGST/IGST math from `SiteSettings`)
-- Reviews: submit/edit (one per product per user, `UNIQUE(product_id, user_id)` already in
-  schema), helpful vote, moderation queue feed for admin
-- Inquiry form (product page + standalone) → `inquiries` table
-
-### Phase 6 — Admin panel (large)
-- `/admin/**` route group, gated by `profiles.role = 'admin'` (checked server-side per the
-  comment in `proxy.ts`)
-- Dashboard, Products CRUD (+ image upload to Supabase Storage, replaces `wwwroot/uploads`),
-  Categories CRUD, Orders management, Inquiries workflow, Reviews moderation, Users
-- **Admin OTP second factor** (`admin_login_otps` table already in schema) — port
-  `Services/AdminOtpService.cs`: email a 6-digit code after password checks out, hash it
-  (never store the raw code), expire it, cap failed attempts
-
-### Phase 7 — Email, chatbot, visitor counter, PWA (medium)
-- Transactional email (order placed/paid/failed, review notifications, welcome) — pick an SMTP
-  or email-API library; port `Services/EmailTemplates.cs`'s HTML templates and the event table
-  from the old README's Email section
-- Gemini-backed chatbot (`Services/ChatbotService.cs` + `GeminiService.cs`) — keyword-matched
-  facts from the DB, optionally phrased by Gemini; **never** let the model answer from anything
-  but the facts block, same constraint as the original system instruction
-- Visitor counter footer widget + geolocation (`VisitorService.cs`) — `visitor_logs`/
-  `visitor_counter` tables already in schema
-- PWA manifest, service worker, offline page (`Features.EnablePwa`)
-
-### Phase 8 — Hardening pass (before going live)
-- Rate limiting equivalent to the old `general`/`sensitive`/`webhook` policies (middleware/proxy
-  level, or Supabase's own, or a small in-memory/Upstash limiter — decide based on hosting target)
-- Security headers (the old README's table: CSP, X-Frame-Options, etc.) via `next.config.ts`
-  headers or proxy
-- Re-verify every RLS policy against the finished feature set — a policy written against a
-  guessed access pattern in Phase 1 may not match how a later phase actually queries a table
-- Cashfree **Live** mode checklist from the old README (domain whitelisting, webhook URL,
-  one real low-value test order) — do this only when the user is ready to take real payments
-
-## Conventions to keep consistent across phases
-
-- **Every API route returns `{ success, message, data? }`** via `lib/api-response.ts` — this is
-  load-bearing for a consistent toast/error UI, don't ad-hoc a different shape in a later phase.
+- **Every API route returns `{ success, message, data? }`** via `lib/api-response.ts`.
 - **Money is `numeric(18,2)`** in Postgres and a plain `number` in TypeScript (not a Decimal
-  library) — matches the precision the old app needed and keeps the data layer simple. Format
-  with `lib/utils/format.ts#formatInr`, never hand-roll `₹` string concatenation.
+  library). Format with `lib/utils/format.ts#formatInr`, never hand-roll `₹` string concatenation.
 - **RLS is the authorization boundary**, not application code. A Server Component using
   `lib/supabase/server.ts`'s client is automatically scoped to the signed-in user — resist the
   urge to add a redundant `.eq("user_id", ...)` "just in case" that could mask a policy bug;
   fix the policy instead if data leaks.
 - **The service-role client (`lib/supabase/admin.ts`) is server-only** and only for the specific
-  cases documented in its own comment (checkout, webhook, guest cart, admin OTP). Don't reach for
-  it just to avoid writing an RLS policy — that defeats the point of RLS.
+  cases documented in its own comment (checkout, webhook, guest cart, admin OTP, admin panel
+  reads). Don't reach for it just to avoid writing an RLS policy — that defeats the point of RLS.
+- **UI is Bootstrap 5 + the ported `site.css`/`components.css`/`invoice.css`**, not Tailwind
+  utility classes — match the existing class names (`.panel`, `.btn-wood`, `.badge-soft`, etc.)
+  in any new page rather than introducing a second styling system.

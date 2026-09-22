@@ -40,6 +40,11 @@ export function RegisterForm({ returnUrl }: { returnUrl?: string }) {
       const result = await registerAction(parsed.data);
       if (result.success) {
         toast.success(result.message ?? "Your account is ready.");
+        try {
+          sessionStorage.setItem("wos_show_feedback_prompt", "1");
+        } catch {
+          // Private browsing or storage disabled — the prompt simply won't show; not worth failing over.
+        }
         router.push(returnUrl || "/");
         router.refresh();
       } else {

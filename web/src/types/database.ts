@@ -709,6 +709,7 @@ export interface Database {
           feature_require_purchase_to_review: boolean;
           feature_visitor_counter: boolean;
           feature_geolocation: boolean;
+          feature_pwa: boolean;
         };
         Insert: {
           id?: number;
@@ -748,6 +749,7 @@ export interface Database {
           feature_require_purchase_to_review?: boolean;
           feature_visitor_counter?: boolean;
           feature_geolocation?: boolean;
+          feature_pwa?: boolean;
         };
         Update: {
           id?: number;
@@ -787,6 +789,7 @@ export interface Database {
           feature_require_purchase_to_review?: boolean;
           feature_visitor_counter?: boolean;
           feature_geolocation?: boolean;
+          feature_pwa?: boolean;
         };
         Relationships: [];
       };
@@ -817,6 +820,7 @@ export interface Database {
           feature_require_purchase_to_review: boolean;
           feature_visitor_counter: boolean;
           feature_geolocation: boolean;
+          feature_pwa: boolean;
         };
         Relationships: [];
       };

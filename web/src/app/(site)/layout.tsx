@@ -1,6 +1,8 @@
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ChatWidget } from "@/components/chat/chat-widget";
+import { FeedbackPromptTrigger } from "@/components/shop/feedback-prompt-trigger";
+import { PwaManager } from "@/components/layout/pwa-manager";
 import { getSiteSettingsPublic } from "@/lib/data/site-settings";
 
 // Full site chrome (header, footer, chat widget) — everything under the (site) route group.
@@ -26,6 +28,10 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       <Footer />
 
       <ChatWidget shopName={site.shop_name} whatsappNumber={site.whatsapp_number} />
+
+      <FeedbackPromptTrigger />
+
+      {site.feature_pwa && <PwaManager />}
     </>
   );
 }

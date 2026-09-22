@@ -16,6 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
     authors: [{ name: "Er Gaurav Kumar" }],
     themeColor: "#6d4423",
     icons: { icon: "/img/favicon.svg", apple: "/img/icon-192.png" },
+    manifest: site.feature_pwa ? "/manifest.webmanifest" : undefined,
     openGraph: {
       type: "website",
       title: site.shop_name,

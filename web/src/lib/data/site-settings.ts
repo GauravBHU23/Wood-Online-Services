@@ -29,6 +29,7 @@ const FALLBACK_PUBLIC: SiteSettingsPublic = {
   feature_require_purchase_to_review: false,
   feature_visitor_counter: true,
   feature_geolocation: true,
+  feature_pwa: true,
 };
 
 /** Public, non-secret shop settings — safe to call from any Server Component (anon-readable view). */

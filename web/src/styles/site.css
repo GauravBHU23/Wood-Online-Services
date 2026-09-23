@@ -246,12 +246,27 @@ a:hover { color: var(--wood-500); text-decoration: underline; }
 }
 .card-wood:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
 
-.product-thumb {
+/* The seed product photos are generated "room scene" SVGs (wall + floor + drop shadow around
+   each piece), and how much of the frame the furniture itself fills varies quite a bit from one
+   drawing to the next — a wide item like a desk naturally reads as more "zoomed in" than a
+   narrower one like a temple/mandir, even though every image is the same aspect ratio. A slight
+   uniform zoom-and-crop on every thumbnail (not just some) tightens that gap without touching the
+   source art, so the catalogue grid reads as visually consistent. The extra wrapper clips the
+   scaled-up image back down to the card's own box — object-fit alone can't add a zoom factor. */
+.product-thumb-wrap {
   aspect-ratio: 4 / 3;
   width: 100%;
-  object-fit: cover;
+  overflow: hidden;
   background: var(--wood-50);
+}
+
+.product-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   display: block;
+  transform: scale(1.12);
+  transform-origin: center;
 }
 
 .product-title {

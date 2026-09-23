@@ -1,7 +1,12 @@
 import "server-only";
 import { randomUUID } from "crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getVisitorIp, getGeoLocation, locationLabel } from "@/lib/data/visitor";
+import { parseUserAgent } from "@/lib/auth/device-info";
+import { getSiteSettingsPublic, toEmailConfig } from "@/lib/data/site-settings";
+import { notifyNewSignIn } from "@/lib/email/service";
+import { formatDateTime } from "@/lib/utils/format";
 import type { Database } from "@/types/database";
 
 // Single-device session enforcement, ported from ApplicationUser.CurrentSessionId +
@@ -38,6 +43,39 @@ export async function completeSignIn(userId: string, accessToken: string): Promi
   // signOut API takes a JWT, not a user id), which is why this only works right after a sign-in,
   // not from an arbitrary server context.
   await admin.auth.admin.signOut(accessToken, "others");
+
+  // New-sign-in security email — fire-and-forget, never let a slow/failed notification block or
+  // fail the actual sign-in itself.
+  void notifySignInEvent(userId).catch((err) => console.error("Failed to send new-sign-in email:", err));
+}
+
+async function notifySignInEvent(userId: string): Promise<void> {
+  const admin = createAdminClient();
+  const [userResult, profileResult, site, h] = await Promise.all([
+    admin.auth.admin.getUserById(userId),
+    admin.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
+    getSiteSettingsPublic(),
+    headers(),
+  ]);
+
+  const email = userResult.data.user?.email;
+  if (!email) return;
+
+  const fullName = (profileResult.data as { full_name: string } | null)?.full_name || "there";
+  const ip = await getVisitorIp();
+  const geo = await getGeoLocation(ip, site.feature_geolocation);
+  const { browser, os, deviceType } = parseUserAgent(h.get("user-agent"));
+
+  const siteBaseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  await notifyNewSignIn(toEmailConfig(site, siteBaseUrl), email, {
+    fullName,
+    ipAddress: ip,
+    location: geo ? locationLabel(geo) : "Unknown location",
+    browser,
+    os,
+    deviceType,
+    signedInAt: formatDateTime(new Date()),
+  });
 }
 
 /**

@@ -2,6 +2,8 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSiteSettingsPublic } from "@/lib/data/site-settings";
 import { AdminChrome } from "./admin-chrome";
+import { IdleLogout } from "@/components/layout/idle-logout";
+import { adminLogoutAction } from "@/lib/auth/admin-actions";
 
 // Ported from Areas/Admin/Views/Shared/_AdminLayout.cshtml — the full admin shell (topbar +
 // sidebar with live badge counts), applied to every /admin/** route except the auth pages
@@ -19,15 +21,22 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
   ]);
 
   return (
-    <AdminChrome
-      shopName={site.shop_name}
-      adminName={admin.fullName}
-      newInquiries={newInquiries}
-      pendingOrders={pendingOrders}
-      pendingReviews={pendingReviews}
-      feedbackCount={feedbackCount}
-    >
-      {children}
-    </AdminChrome>
+    <>
+      <AdminChrome
+        shopName={site.shop_name}
+        adminName={admin.fullName}
+        newInquiries={newInquiries}
+        pendingOrders={pendingOrders}
+        pendingReviews={pendingReviews}
+        feedbackCount={feedbackCount}
+      >
+        {children}
+      </AdminChrome>
+
+      {/* requireAdmin() above already redirects an unauthenticated visitor before this ever
+          renders, so isSignedIn is always true here — the admin panel holds more sensitive data
+          than the customer side, so the same 20-minute idle timeout applies here too. */}
+      <IdleLogout isSignedIn logoutAction={adminLogoutAction} loginPath="/admin/login" />
+    </>
   );
 }

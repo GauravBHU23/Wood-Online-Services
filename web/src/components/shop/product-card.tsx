@@ -13,15 +13,17 @@ export function ProductCard({ product }: { product: ProductWithCategory }) {
   return (
     <div className="card-wood d-flex flex-column h-100">
       <Link href={`/shop/${product.id}`} className="position-relative d-block" aria-label={product.name}>
-        <img
-          src={product.image_url || "/img/cat-custom.svg"}
-          alt={product.name}
-          className="product-thumb"
-          loading="lazy"
-          decoding="async"
-          width={400}
-          height={300}
-        />
+        <div className="product-thumb-wrap">
+          <img
+            src={product.image_url || "/img/cat-custom.svg"}
+            alt={product.name}
+            className="product-thumb"
+            loading="lazy"
+            decoding="async"
+            width={400}
+            height={300}
+          />
+        </div>
 
         <div className="position-absolute top-0 start-0 m-2 d-flex flex-column gap-1 align-items-start">
           {product.is_custom_order ? (

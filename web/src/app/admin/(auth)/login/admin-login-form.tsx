@@ -10,7 +10,15 @@ import { SubmitButton } from "@/components/forms/submit-button";
 import { useToast } from "@/components/ui/toast-provider";
 
 // Ported from Areas/Admin/Views/Auth/Login.cshtml.
-export function AdminLoginForm({ returnUrl, sessionExpired }: { returnUrl?: string; sessionExpired?: boolean }) {
+export function AdminLoginForm({
+  returnUrl,
+  sessionExpired,
+  idleTimeout,
+}: {
+  returnUrl?: string;
+  sessionExpired?: boolean;
+  idleTimeout?: boolean;
+}) {
   const router = useRouter();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
@@ -56,6 +64,11 @@ export function AdminLoginForm({ returnUrl, sessionExpired }: { returnUrl?: stri
             {sessionExpired && !formError && (
               <div className="alert alert-warning py-2 small">
                 You have been signed out because this account was signed in on another device.
+              </div>
+            )}
+            {idleTimeout && !sessionExpired && !formError && (
+              <div className="alert alert-warning py-2 small">
+                You have been signed out after 20 minutes of inactivity, for your security.
               </div>
             )}
             {formError && <div className="alert alert-danger py-2 small">{formError}</div>}

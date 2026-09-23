@@ -15,6 +15,7 @@ import {
   type OrderAddressData,
   type OrderStatusForEmail,
 } from "@/lib/email/templates";
+import { formatDateTime } from "@/lib/utils/format";
 
 // Ported from Services/NotificationService.cs. When SMTP is not configured the message is
 // logged instead, so every flow still completes in development and before mail credentials
@@ -105,7 +106,7 @@ export async function notifyNewInquiry(site: SiteEmailConfig, inquiry: InquiryEm
       paragraph(`Phone: ${inquiry.phone}`) +
       paragraph(`Email: ${inquiry.email ?? "Not provided"}`) +
       paragraph(`Product: ${inquiry.productName ?? "General inquiry"}`) +
-      paragraph(`Received: ${new Date(inquiry.createdAt).toLocaleString("en-IN")}`) +
+      paragraph(`Received: ${formatDateTime(inquiry.createdAt)} IST`) +
       quote(inquiry.message),
     "This is an automated notification from your website.",
     site.tagline
@@ -384,4 +385,37 @@ export async function notifyAdminOtp(
     site.tagline
   );
   await send(email, `${code} is your admin sign-in code`, body, site.shopName);
+}
+
+export interface SignInEventData {
+  fullName: string;
+  ipAddress: string;
+  location: string;
+  browser: string;
+  os: string;
+  deviceType: string;
+  signedInAt: string;
+}
+
+// New feature, not a port — the original had no per-sign-in notification at all (its "new
+// session" model was, at most, the single-device-session cookie replacement discussed elsewhere
+// in this codebase). Sent fire-and-forget from completeSignIn() on every successful customer or
+// admin sign-in, so an account holder can immediately recognise (or flag) a sign-in that wasn't
+// them from the device/location details.
+export async function notifyNewSignIn(site: SiteEmailConfig, email: string, event: SignInEventData) {
+  const body = shell(
+    site.shopName,
+    "New Sign-In",
+    heading("New sign-in to your account") +
+      paragraph(`Hello ${event.fullName}, your account was just signed in to.`) +
+      infoBox("When", `${event.signedInAt} IST`) +
+      infoBox("Device", `${event.deviceType} - ${event.browser} on ${event.os}`) +
+      infoBox("Location", `${event.location} (IP: ${event.ipAddress})`) +
+      paragraph(
+        "If this was you, no action is needed. If you do not recognise this sign-in, change your password immediately and contact us."
+      ),
+    supportFooter(site),
+    site.tagline
+  );
+  await send(email, "New sign-in to your account", body, site.shopName);
 }

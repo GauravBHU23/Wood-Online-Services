@@ -10,13 +10,6 @@ import type { Database } from "@/types/database";
 const SESSION_COOKIE = "wos_vid";
 const GEO_CACHE = new Map<string, { value: GeoResult | null; expiresAt: number }>();
 
-interface GeoResult {
-  city: string | null;
-  region: string | null;
-  country: string | null;
-  countryCode: string | null;
-}
-
 export interface VisitorInfo {
   ipAddress: string;
   city: string | null;
@@ -68,7 +61,15 @@ function isPrivateAddress(ip: string): boolean {
   return false;
 }
 
-async function getGeoLocation(ip: string, enabled: boolean): Promise<GeoResult | null> {
+export interface GeoResult {
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  countryCode: string | null;
+}
+
+/** Exported so lib/auth/login-notification.ts can reuse the same lookup for the sign-in security email. */
+export async function getGeoLocation(ip: string, enabled: boolean): Promise<GeoResult | null> {
   if (!enabled || isPrivateAddress(ip)) return null;
 
   const cached = GEO_CACHE.get(ip);

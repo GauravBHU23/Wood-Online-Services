@@ -237,9 +237,16 @@ export default async function OrderDetailPage({
             </div>
 
             <div className="d-grid gap-2 no-print">
-              <a href={`/invoice/${order.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-outline-wood">
-                Download Invoice
-              </a>
+              {/* The original always showed this link regardless of payment status — but an
+                  online order that hasn't actually been paid for yet has nothing meaningful to
+                  invoice (retrying/cancelling makes more sense at that point), so it's hidden
+                  until payment_status is paid. Cash on Delivery orders show it immediately since
+                  they were never waiting on a payment to confirm in the first place. */}
+              {(order.payment_method === "cod" || order.payment_status === "paid") && (
+                <a href={`/invoice/${order.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-outline-wood">
+                  Download Invoice
+                </a>
+              )}
 
               {canCancel && <CancelOrderButton orderId={order.id} />}
 

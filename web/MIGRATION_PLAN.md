@@ -85,8 +85,14 @@ stays in `simulated` mode until the user has a live domain and real merchant cre
   which ran as an in-process `BackgroundService` polling every 5 minutes. Next.js (especially
   serverless deployments) has no equivalent long-running process, so it's exposed as
   `api/cron/reconcile-payments`, bearer-token authenticated (`CRON_SECRET`), meant to be called
-  every 5 minutes by an external scheduler — `vercel.json` wires this up for Vercel Cron already;
-  for another host, point any scheduler (Supabase's `pg_cron` + `pg_net`, GitHub Actions, etc.)
+  periodically by an external scheduler — `vercel.json` wires this up for Vercel Cron already, but
+  at `0 3 * * *` (once daily, 3 AM) rather than every 5 minutes: Vercel's **Hobby (free) plan only
+  allows daily-or-less-frequent cron schedules**, anything more frequent needs Pro ($20/mo). This
+  is only a safety net for webhooks Cashfree failed to deliver — the webhook itself is real-time
+  and handles the overwhelming majority of payments instantly, so a daily sweep is an acceptable
+  trade-off on the free tier. **If upgrading to Vercel Pro later, change the schedule back to
+  `*/5 * * * *`** to match the original's cadence exactly. For another host, point any scheduler
+  (Supabase's `pg_cron` + `pg_net`, GitHub Actions on a cron trigger, cron-job.org, etc.)
   at that URL with the same header instead
 
 ## A sharp edge you will hit again: postgrest-js + TypeScript
@@ -167,9 +173,10 @@ recur, but reconcile the seed/RLS-only knowledge (doc comments, the `Table`/`Vie
    `CASHFREE_MODE=simulated` is fine for launching and taking Cash-on-Delivery orders in the
    meantime — online payment just won't be available until this is done.
 8. **Wire up the cron secret** — `vercel.json` already schedules `api/cron/reconcile-payments`
-   every 5 minutes via Vercel Cron; just set `CRON_SECRET` as a Vercel environment variable at
-   deploy time (same value as `.env.local`, or a freshly generated one) and confirm the cron
-   fired at least once after deploying (Vercel's dashboard → Cron Jobs tab shows run history).
+   daily (`0 3 * * *` — see the Phase 7 note above on why not every 5 minutes on Hobby) via
+   Vercel Cron; just set `CRON_SECRET` as a Vercel environment variable at deploy time (same value
+   as `.env.local`, or a freshly generated one) and confirm the cron fired at least once after
+   deploying (Vercel's dashboard → Cron Jobs tab shows run history).
 9. **PWA icons** — done (not actually a gap): `public/img/icon-192.png`, `icon-512.png`,
    `icon-maskable-512.png` were copied verbatim from the original app's own assets, which is
    correct per the "pixel-identical" instruction. Only replace them if the shop later wants a

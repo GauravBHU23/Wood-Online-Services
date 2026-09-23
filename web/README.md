@@ -45,8 +45,11 @@ update public.profiles set role = 'admin' where id = '<the auth.users.id>';
    Set `NEXT_PUBLIC_SITE_URL` to the real `https://your-domain` once you know it (a Vercel preview
    URL works too, but Cashfree Live mode needs a stable public domain — see the checklist below).
 5. Deploy. Vercel reads `vercel.json` automatically, which schedules
-   `api/cron/reconcile-payments` every 5 minutes via Vercel Cron — no extra setup needed there
-   beyond `CRON_SECRET` being set (step 4).
+   `api/cron/reconcile-payments` once daily via Vercel Cron — no extra setup needed there beyond
+   `CRON_SECRET` being set (step 4). It's daily rather than every 5 minutes because Vercel's free
+   Hobby plan only allows daily-or-less-frequent cron schedules; upgrade to Pro and change
+   `vercel.json`'s schedule to `*/5 * * * *` if you want the tighter interval later. This cron is
+   only a safety net for webhooks Cashfree failed to deliver — the webhook itself is real-time.
 6. Once live, run through `MIGRATION_PLAN.md`'s "Before going live" checklist for anything not
    already ticked off (Cashfree Live mode, first real end-to-end order, etc.).
 

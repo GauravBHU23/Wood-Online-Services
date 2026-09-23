@@ -7,14 +7,62 @@ The old app stays untouched during the migration — nothing here modifies `src/
 It is the reference for every business rule; when in doubt, that codebase is correct and this
 one should match it, not the other way round.
 
-## Status: deployed to Vercel. Phases 1–8 done; a full feature-parity re-audit found and fixed 6 gaps.
+## Status: deployed to Vercel. Phases 1–8 done; migrations 0009/0010 applied; live payments working.
 
 Every customer-facing flow, the full admin panel, payments, email, chatbot, and PWA support are
 built and ported feature-for-feature from the original. **A real Supabase project exists**
-(`tixrybyedvarwsmgoqef`) with migrations 0001–0008 applied and verified against live data;
-**migrations 0009 (single-device session) and 0010 (site_settings_public fix, see below) are
-written but not yet applied** — see their own notes below and in each file. `npm run build` /
-`npx tsc --noEmit` / `npx eslint` all pass clean. Live at `wood-online-service.vercel.app`.
+(`tixrybyedvarwsmgoqef`) with migrations 0001–0010 all applied and verified against live data.
+`npm run build` / `npx tsc --noEmit` / `npx eslint` all pass clean. Live at
+`wood-online-service.vercel.app`, Cashfree in `live` mode, domain whitelisted, a real end-to-end
+payment has been completed successfully.
+
+### Post-launch email-link + cookie-write audit (found 2 more real bugs, both fixed)
+
+After live payments started working, the user asked for a full-stack re-check that every link in
+every email template actually works, plus another sweep for the cookie-write-from-a-Server-
+Component-render bug class (already found and fixed twice: the guest cart cookie, and
+`/checkout/payment-callback`). An agent-driven audit read all 9 email-sending functions, traced
+every link's destination route including auth requirements and RLS scoping, traced the full
+password-reset and admin-OTP chains end to end, and grepped every `cookies().set(` call site in
+the app. Result: **all 9 email template links work correctly end-to-end** — no gaps there. Two
+more real bugs turned up, both fixed:
+
+1. **CRITICAL — `src/app/layout.tsx` (RootLayout, wraps every single route) crashed the entire
+   site whenever a flash message was pending.** It called `readAndClearFlashes()` directly in its
+   Server Component render body; that function deleted the flash cookie as part of "reading" it —
+   a cookie **write**, illegal outside a Server Action/Route Handler. Any redirect that calls
+   `setFlash()` (checkout success, payment callback, login, etc.) left a cookie that crashed the
+   *next* page render anywhere in the app with "Cookies can only be modified in a Server Action or
+   Route Handler" — including, ironically, every page an email's "Track Your Order"/"View Order"/
+   "Retry Payment" link would land the customer on. Fixed by splitting read from write:
+   `lib/flash.ts#readFlashes()` is now read-only (safe anywhere); the actual delete moved into
+   `FlashMessages`' own `useEffect` via `document.cookie`, a plain browser API with no such
+   restriction. The cookie-name constant and type were pulled into a new `lib/flash-constants.ts`
+   so the Client Component doesn't have to import `flash.ts` itself (which pulls in
+   `next/headers`, server-only — Next.js refuses to bundle that for the client at all, a second,
+   separate build error this surfaced).
+2. **`proxy.ts`'s auth-redirect dropped the query string from `returnUrl`.** Cashfree's
+   `return_url` sends the browser to `/checkout/payment-callback?order_id=...` — if the customer's
+   session happened to expire mid-payment, `proxy.ts` bounced them to `/account/login` with
+   `returnUrl=/checkout/payment-callback` (pathname only), losing `order_id`; after login they'd
+   land back on the callback page unable to identify which payment to check, surfacing "we could
+   not identify that payment" despite having actually paid. Fixed: both places `proxy.ts` builds a
+   `returnUrl` now use `pathname + search` instead of `pathname` alone.
+
+Also hardened cookie security consistency while doing the sweep: `lib/data/cart.ts`'s guest-cart
+cookie and `lib/data/visitor.ts`'s session cookie were missing `secure: process.env.NODE_ENV ===
+"production"` (present on the single-device session cookie, missed on these two) — the original
+ASP.NET app set `CookieSecurePolicy.Always` in production on every cookie it issued; this brings
+every custom cookie in line with that same policy instead of just some of them.
+
+**Lesson for future audits, if the user asks for another one**: this cookie-write bug class has
+now been found 3 times (guest cart, payment-callback page, root layout) in 3 different files that
+all looked individually reasonable — grep the whole tree for `cookies().set(`/`cookieStore.set(`/
+`.delete(` and trace every single call site's actual caller chain back to a genuine Server Action
+invocation or Route Handler, don't assume a file being marked `"use server"` or having "action" in
+its name is sufficient — `handlePaymentCallback` proved that a `"use server"` function called
+directly from a page's render body still isn't a Server Action *invocation* in the sense that
+matters here.
 
 ### Bug found from a screenshot, not the audit: site_settings never actually reached the storefront
 
@@ -212,26 +260,18 @@ recur, but reconcile the seed/RLS-only knowledge (doc comments, the `Table`/`Vie
 
 ## Before going live (Phase 8)
 
-1. **Create the Supabase project** — done. Project `tixrybyedvarwsmgoqef`, migrations 0001–0008
-   applied and verified (categories/products/site_settings_public/storage buckets/rate_limits all
-   confirmed via direct REST calls against live data — note that "confirmed" there was via the
-   service-role key, which is how migration 0010's bug went unnoticed; always double-check
-   anon-role reads too). **Migrations `0009_single_device_session.sql` and
-   `0010_fix_site_settings_public_view.sql` are written but NOT YET applied** — paste both into
-   the SQL Editor, 0009 then 0010 (order doesn't actually matter between these two, but keep
-   ascending-filename order as the general rule). 0009 is inert but harmless without being
-   applied (`src/proxy.ts`'s session check fails open on a missing column). **0010 is not
-   optional** — until it's applied, every admin change to Settings (shop name, phone, address,
-   GST rate, shipping charge, feature flags) silently never reaches the storefront, which still
-   shows hardcoded placeholder values to every visitor.
+1. **Create the Supabase project** — done. Project `tixrybyedvarwsmgoqef`, migrations
+   **0001–0010 all applied** (categories/products/site_settings_public/storage
+   buckets/rate_limits/single-device-session/the site_settings_public anon-read fix all confirmed
+   working against live data via BOTH service-role and anon keys — the anon-key check matters,
+   see the note above about how 0010's bug went unnoticed the first time).
 2. **Manually promote one account to admin** — nothing in the app can do this (by design, so no
    API path can self-elevate). Done: `gauravkum1275@gmail.com` promoted via
    `update public.profiles set role = 'admin' where id = '4b70f059-060e-4e1f-b99d-d5aceed27975';`
    — sign in at `/admin/login`, not the customer `/account/login`.
-3. **First real end-to-end run** — done locally (`next dev` and `next start` against the real
-   database): homepage/shop/product pages/cart/account pages all verified 200 with real data.
-   Register → checkout → admin dashboard flow still needs a manual click-through once an admin
-   account exists (step 2).
+3. **First real end-to-end run** — done, including a real live Cashfree payment completed
+   successfully in production (domain whitelisted at `https://wood-online-service.vercel.app`,
+   `NEXT_PUBLIC_SITE_URL` corrected from an initially-wrong `localhost` value on Vercel).
 4. **Rate limiting** — done. Ported as a Postgres-backed fixed-window limiter (`0008_rate_limits.sql`'s
    `check_rate_limit()`, called from `lib/rate-limit.ts`) instead of Upstash/Redis, so it works on
    any host without another paid service. Same three policies and same limits as the original

@@ -12,7 +12,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-export function PwaManager() {
+export function PwaManager({ shopName }: { shopName: string }) {
   const toast = useToast();
   const [visible, setVisible] = useState(false);
   const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
@@ -85,7 +85,7 @@ export function PwaManager() {
       <div className="fw-bold mb-1" style={{ color: "var(--wood-900)" }}>
         Install our app
       </div>
-      <p className="small text-muted-wood mb-3">Add Wood Online Service to your home screen for faster access and offline browsing.</p>
+      <p className="small text-muted-wood mb-3">Add {shopName} to your home screen for faster access and offline browsing.</p>
       <div className="d-flex gap-2">
         <button type="button" className="btn btn-wood btn-sm" onClick={handleInstall}>
           Install

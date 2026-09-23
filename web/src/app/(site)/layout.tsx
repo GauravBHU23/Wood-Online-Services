@@ -31,7 +31,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
 
       <FeedbackPromptTrigger />
 
-      {site.feature_pwa && <PwaManager />}
+      {site.feature_pwa && <PwaManager shopName={site.shop_name} />}
     </>
   );
 }

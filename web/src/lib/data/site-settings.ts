@@ -124,6 +124,7 @@ export async function updateSiteSettingsPayment(form: SiteSettingsPaymentInput):
 export function toEmailConfig(site: SiteSettingsPublic, siteBaseUrl: string): SiteEmailConfig {
   return {
     shopName: site.shop_name,
+    tagline: site.tagline,
     phone: site.phone,
     email: site.email,
     workingHours: site.working_hours,

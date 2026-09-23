@@ -17,7 +17,7 @@ export function escapeHtml(value: string | null | undefined): string {
     .replace(/'/g, "&#39;");
 }
 
-export function shell(shopName: string, title: string, bodyHtml: string, footerNote: string): string {
+export function shell(shopName: string, title: string, bodyHtml: string, footerNote: string, tagline?: string): string {
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -30,9 +30,13 @@ export function shell(shopName: string, title: string, bodyHtml: string, footerN
         <tr>
           <td style="background:${BRAND_DARK};padding:22px 28px;">
             <div style="color:#ffffff;font-size:20px;font-weight:700;font-family:Georgia,serif;">${escapeHtml(shopName)}</div>
-            <div style="color:#d0a468;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin-top:2px;">
-              Handcrafted Wooden Furniture
-            </div>
+            ${
+              tagline
+                ? `<div style="color:#d0a468;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin-top:2px;">
+              ${escapeHtml(tagline)}
+            </div>`
+                : ""
+            }
           </td>
         </tr>
         <tr><td style="padding:28px;">${bodyHtml}</td></tr>

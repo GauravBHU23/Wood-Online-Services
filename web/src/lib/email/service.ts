@@ -27,7 +27,6 @@ const SMTP_USER = process.env.SMTP_USER ?? "";
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD ?? "";
 const SMTP_FROM_EMAIL = process.env.SMTP_FROM_EMAIL || SMTP_USER;
 const SMTP_ADMIN_EMAIL = process.env.SMTP_ADMIN_EMAIL ?? "";
-const FROM_NAME = "Wood Online Service";
 
 const isSmtpConfigured = () =>
   SMTP_ENABLED && !!SMTP_HOST && !!SMTP_USER && !!SMTP_PASSWORD;
@@ -45,7 +44,10 @@ function getTransporter() {
   return transporter;
 }
 
-async function send(to: string | null | undefined, subject: string, html: string): Promise<void> {
+// fromName is the shop's current name (site.shopName), not a hardcoded constant — so the "From"
+// header an admin sees in their inbox always matches whatever is set in /admin/settings, not
+// whatever name was live the day this code shipped.
+async function send(to: string | null | undefined, subject: string, html: string, fromName: string): Promise<void> {
   if (!to) {
     console.log(`[EMAIL] Skipped, no recipient configured: ${subject}`);
     return;
@@ -58,7 +60,7 @@ async function send(to: string | null | undefined, subject: string, html: string
 
   try {
     await getTransporter().sendMail({
-      from: `"${FROM_NAME}" <${SMTP_FROM_EMAIL}>`,
+      from: `"${fromName}" <${SMTP_FROM_EMAIL}>`,
       to,
       subject,
       html,
@@ -72,6 +74,7 @@ async function send(to: string | null | undefined, subject: string, html: string
 
 export interface SiteEmailConfig {
   shopName: string;
+  tagline: string;
   phone: string;
   email: string;
   workingHours: string;
@@ -104,10 +107,11 @@ export async function notifyNewInquiry(site: SiteEmailConfig, inquiry: InquiryEm
       paragraph(`Product: ${inquiry.productName ?? "General inquiry"}`) +
       paragraph(`Received: ${new Date(inquiry.createdAt).toLocaleString("en-IN")}`) +
       quote(inquiry.message),
-    "This is an automated notification from your website."
+    "This is an automated notification from your website.",
+    site.tagline
   );
 
-  await send(SMTP_ADMIN_EMAIL, `New Inquiry from ${inquiry.name}`, body);
+  await send(SMTP_ADMIN_EMAIL, `New Inquiry from ${inquiry.name}`, body, site.shopName);
 }
 
 export interface OrderEmailOrder extends OrderEmailData, OrderAddressData {
@@ -141,9 +145,10 @@ export async function notifyOrderPlaced(
             : "Payment method: Online. Your payment has been received."
         ) +
         (siteUrl ? button("Track Your Order", `${siteUrl}/orders/${order.id}`) : ""),
-      supportFooter(site)
+      supportFooter(site),
+      site.tagline
     );
-    await send(customerEmail, `Order Confirmed - ${order.order_number}`, customerBody);
+    await send(customerEmail, `Order Confirmed - ${order.order_number}`, customerBody, site.shopName);
   }
 
   const adminBody = shell(
@@ -156,12 +161,14 @@ export async function notifyOrderPlaced(
       orderItemsTable(order) +
       addressBlock(order) +
       (order.notes ? paragraph(`Customer note: ${order.notes}`) : ""),
-    "This is an automated notification from your website."
+    "This is an automated notification from your website.",
+    site.tagline
   );
   await send(
     SMTP_ADMIN_EMAIL,
     `New Order ${order.order_number} - Rs. ${Math.round(order.total_amount).toLocaleString("en-IN")}`,
-    adminBody
+    adminBody,
+    site.shopName
   );
 }
 
@@ -192,9 +199,10 @@ export async function notifyPaymentSuccess(
         paragraph(`Transaction ID: ${transaction.payment_id ?? "-"}`) +
         orderItemsTable(order) +
         (siteUrl ? button("View Order", `${siteUrl}/orders/${order.id}`) : ""),
-      supportFooter(site)
+      supportFooter(site),
+      site.tagline
     );
-    await send(customerEmail, `Payment Received - ${order.order_number}`, body);
+    await send(customerEmail, `Payment Received - ${order.order_number}`, body, site.shopName);
   }
 
   const adminBody = shell(
@@ -206,9 +214,10 @@ export async function notifyPaymentSuccess(
       paragraph(`Customer: ${order.shipping_name} (${order.shipping_phone})`) +
       paragraph(`Method: ${transaction.payment_method ?? "Online"}`) +
       paragraph(`Transaction ID: ${transaction.payment_id ?? "-"}`),
-    "This is an automated notification from your website."
+    "This is an automated notification from your website.",
+    site.tagline
   );
-  await send(SMTP_ADMIN_EMAIL, `Payment Received - ${order.order_number}`, adminBody);
+  await send(SMTP_ADMIN_EMAIL, `Payment Received - ${order.order_number}`, adminBody, site.shopName);
 }
 
 export async function notifyPaymentFailed(
@@ -231,9 +240,10 @@ export async function notifyPaymentFailed(
       (transaction.failure_reason ? paragraph(`Reason: ${transaction.failure_reason}`) : "") +
       paragraph("You can retry the payment, or place the order with Cash on Delivery instead.") +
       (siteUrl ? button("Retry Payment", `${siteUrl}/orders/${order.id}`) : ""),
-    supportFooter(site)
+    supportFooter(site),
+    site.tagline
   );
-  await send(customerEmail, `Payment Not Completed - ${order.order_number}`, body);
+  await send(customerEmail, `Payment Not Completed - ${order.order_number}`, body, site.shopName);
 }
 
 export async function notifyOrderStatus(
@@ -273,9 +283,10 @@ export async function notifyOrderStatus(
       statusTracker(status) +
       orderItemsTable(order) +
       (siteUrl ? button("View Order", `${siteUrl}/orders/${order.id}`) : ""),
-    supportFooter(site)
+    supportFooter(site),
+    site.tagline
   );
-  await send(customerEmail, `${subject} - ${order.order_number}`, body);
+  await send(customerEmail, `${subject} - ${order.order_number}`, body, site.shopName);
 }
 
 export async function notifyWelcome(site: SiteEmailConfig, email: string, fullName: string) {
@@ -289,9 +300,10 @@ export async function notifyWelcome(site: SiteEmailConfig, email: string, fullNa
       paragraph("You can now place orders, track them, and leave reviews on the furniture you buy.") +
       paragraph("Every piece we make is solid wood, seasoned and termite treated, and finished by hand.") +
       (siteUrl ? button("Browse Products", `${siteUrl}/shop`) : ""),
-    supportFooter(site)
+    supportFooter(site),
+    site.tagline
   );
-  await send(email, `Welcome to ${site.shopName}`, body);
+  await send(email, `Welcome to ${site.shopName}`, body, site.shopName);
 }
 
 export interface ReviewEmailData {
@@ -317,9 +329,10 @@ export async function notifyNewReview(site: SiteEmailConfig, review: ReviewEmail
           ? "This review is awaiting your approval in the admin panel."
           : "This review is already live on the product page."
       ),
-    "This is an automated notification from your website."
+    "This is an automated notification from your website.",
+    site.tagline
   );
-  await send(SMTP_ADMIN_EMAIL, `New ${review.rating}-star review on ${productName}`, body);
+  await send(SMTP_ADMIN_EMAIL, `New ${review.rating}-star review on ${productName}`, body, site.shopName);
 }
 
 export async function notifyPasswordReset(
@@ -342,9 +355,10 @@ export async function notifyPasswordReset(
       paragraph(
         "If you did not ask to reset your password, you can safely ignore this email - your password will not change."
       ),
-    supportFooter(site)
+    supportFooter(site),
+    site.tagline
   );
-  await send(email, "Reset your password", body);
+  await send(email, "Reset your password", body, site.shopName);
 }
 
 export async function notifyAdminOtp(
@@ -366,7 +380,8 @@ export async function notifyAdminOtp(
       paragraph(
         "If you did not just try to sign in, someone else may have your password - change it as soon as possible and do not share this code with anyone."
       ),
-    supportFooter(site)
+    supportFooter(site),
+    site.tagline
   );
-  await send(email, `${code} is your admin sign-in code`, body);
+  await send(email, `${code} is your admin sign-in code`, body, site.shopName);
 }

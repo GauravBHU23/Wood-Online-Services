@@ -53,6 +53,7 @@ export function AdminChrome({
     { href: "/admin/reviews", label: "Reviews", icon: "⭐", badge: pendingReviews, badgeClass: "bg-warning text-dark" },
     { href: "/admin/feedback", label: "Feedback", icon: "💌", badge: feedbackCount, badgeClass: "bg-secondary" },
   ];
+  const shop: NavItem[] = [{ href: "/admin/settings", label: "Settings", icon: "⚙️" }];
 
   function renderNavGroup(heading: string, items: NavItem[]) {
     return (
@@ -157,6 +158,7 @@ export function AdminChrome({
                 {renderNavGroup("Overview", overview)}
                 {renderNavGroup("Catalog", catalog)}
                 {renderNavGroup("Customers", customers)}
+                {renderNavGroup("Shop", shop)}
               </nav>
             </div>
           </aside>

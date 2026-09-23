@@ -140,6 +140,21 @@ checked matched. Fixed, in severity order:
   Categories, Orders (status update, auto stock return/restore), Inquiries, Reviews (moderation;
   rating recalculation is now automatic via the DB trigger, not an explicit call), Feedback,
   Users (block/unblock now uses Supabase Auth's own `ban_duration`/`banned_until`)
+- **Settings (new feature, added post-launch, not a port)** — `/admin/settings`
+  (`app/admin/(dashboard)/settings/`, `lib/admin/settings-actions.ts`,
+  `lib/data/site-settings.ts#updateSiteSettingsGeneral`): the original had NO runtime settings UI
+  at all — `Models/SiteSettings.cs` was config-bound from `appsettings.json`, edited by hand on
+  the server and requiring a restart, never through the app. Editing shop
+  name/phone/address/GST/shipping/feature-flags from the admin panel — no more hand-writing SQL
+  in the Supabase SQL Editor — is a genuinely new capability the database-backed design enables,
+  requested after launch. Deliberately does NOT include the Cashfree/Gemini fields also stored in
+  `site_settings` (`cashfree_client_id`, `gemini_api_key`, etc.) — those columns exist but are
+  never actually read by `lib/payments/cashfree.ts`/`lib/chatbot/gemini.ts`, which always read
+  the same-named environment variables instead; putting them in this form would let an admin
+  "change" a setting that silently does nothing, which is worse than not having the field at all.
+  `siteSettingsPaymentSchema`/`updateSiteSettingsPayment` exist in code for that data but aren't
+  wired into any page — if Cashfree/Gemini config is ever made DB-driven instead of env-driven,
+  wire those into a second form page then.
 
 ### Phase 7 — PWA, welcome feedback prompt, payment reconciliation
 - Welcome feedback prompt modal, shown once after registration (`sessionStorage` flag +

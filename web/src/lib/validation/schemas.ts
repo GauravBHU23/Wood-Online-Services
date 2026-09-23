@@ -179,3 +179,56 @@ export const categorySchema = z.object({
   isActive: z.boolean().optional(),
 });
 export type CategoryInput = z.infer<typeof categorySchema>;
+
+// Site settings has no admin UI in the original (Models/SiteSettings.cs is config-bound, set only
+// via appsettings.json/DB seed, never edited at runtime) — this is a genuinely new admin feature,
+// not a port, so these rules are written fresh rather than lifted from a ViewModel. Field names
+// and ranges match how each value is actually used elsewhere (InvoiceService.cs's GST math,
+// CartService.cs's shipping calc), not an arbitrary guess.
+export const siteSettingsGeneralSchema = z.object({
+  shopName: z.string().trim().min(1, "Shop name is required").max(150),
+  tagline: z.string().trim().max(200).optional().or(z.literal("")),
+  phone: phoneSchema,
+  whatsappNumber: z.string().trim().regex(/^\d{10,15}$/, "Enter digits only, with country code (e.g. 91XXXXXXXXXX)"),
+  email: emailSchema,
+  addressLine1: z.string().trim().min(1, "Address is required").max(200),
+  addressLine2: z.string().trim().max(200).optional().or(z.literal("")),
+  workingHours: z.string().trim().max(100).optional().or(z.literal("")),
+  mapEmbedUrl: z.string().trim().max(1000).optional().or(z.literal("")),
+  gstNumber: z.string().trim().max(20).optional().or(z.literal("")),
+  gstRate: z.number().min(0).max(100),
+  pricesIncludeGst: z.boolean().optional(),
+  stateName: z.string().trim().min(1, "State is required").max(100),
+  stateCode: z.string().trim().min(1, "State code is required").max(4),
+  panNumber: z.string().trim().max(20).optional().or(z.literal("")),
+  bankName: z.string().trim().max(150).optional().or(z.literal("")),
+  bankAccountNumber: z.string().trim().max(30).optional().or(z.literal("")),
+  bankIfsc: z.string().trim().max(15).optional().or(z.literal("")),
+  upiId: z.string().trim().max(100).optional().or(z.literal("")),
+  invoicePrefix: z.string().trim().max(10).optional().or(z.literal("")),
+  shippingCharge: z.number().min(0, "Shipping charge must be 0 or more").max(100000),
+  freeShippingAbove: z.number().min(0).max(10000000),
+  featureReviews: z.boolean().optional(),
+  featureModerateReviews: z.boolean().optional(),
+  featureRequirePurchaseToReview: z.boolean().optional(),
+  featureVisitorCounter: z.boolean().optional(),
+  featureGeolocation: z.boolean().optional(),
+  featurePwa: z.boolean().optional(),
+});
+export type SiteSettingsGeneralInput = z.infer<typeof siteSettingsGeneralSchema>;
+
+// Secrets are edited separately from the general form (see settings-form.tsx): an empty field
+// here means "leave the stored value unchanged", never "clear it" — otherwise reloading the page
+// (which never echoes a secret back to the browser) and hitting Save would wipe out live
+// credentials by accident.
+export const siteSettingsPaymentSchema = z.object({
+  cashfreeMode: z.enum(["disabled", "simulated", "live"]),
+  cashfreeClientId: z.string().trim().max(200).optional().or(z.literal("")),
+  cashfreeClientSecret: z.string().trim().max(200).optional().or(z.literal("")),
+  cashfreeBaseUrl: z.string().trim().max(300).optional().or(z.literal("")),
+  cashfreeApiVersion: z.string().trim().max(30).optional().or(z.literal("")),
+  geminiEnabled: z.boolean().optional(),
+  geminiApiKey: z.string().trim().max(300).optional().or(z.literal("")),
+  geminiModel: z.string().trim().max(100).optional().or(z.literal("")),
+});
+export type SiteSettingsPaymentInput = z.infer<typeof siteSettingsPaymentSchema>;

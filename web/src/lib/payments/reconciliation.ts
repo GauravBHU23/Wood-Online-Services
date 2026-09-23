@@ -60,13 +60,20 @@ export async function reconcilePendingPayments(): Promise<ReconciliationResult> 
   let markedFailed = 0;
   let stillPending = 0;
 
-  const site = await getSiteSettingsPublic();
+  // Batch-fetch every transaction's order in one round trip instead of one query per iteration
+  // (a real N+1 with up to BATCH_SIZE queries otherwise) — site settings run alongside it since
+  // neither depends on the other.
+  const orderIds = [...new Set(pending.map((t) => t.order_id))];
+  const [ordersResult, site] = await Promise.all([
+    admin.from("orders").select("*").in("id", orderIds),
+    getSiteSettingsPublic(),
+  ]);
+  const ordersById = new Map<number, Order>((ordersResult.data as Order[] | null ?? []).map((o) => [o.id, o]));
   const siteBaseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
   const emailConfig = toEmailConfig(site, siteBaseUrl);
 
   for (const transaction of pending) {
-    const orderResult = await admin.from("orders").select("*").eq("id", transaction.order_id).maybeSingle();
-    const order = orderResult.data as Order | null;
+    const order = ordersById.get(transaction.order_id) ?? null;
     if (!order) continue;
 
     const status = await cashfree.getPaymentStatus(transaction.payment_request_id!);

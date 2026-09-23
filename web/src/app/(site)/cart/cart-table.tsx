@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { updateCartQuantityAction, removeFromCartAction } from "@/lib/cart/actions";
@@ -10,10 +10,15 @@ import type { CartLine } from "@/lib/data/cart";
 // Ported from Views/Cart/Index.cshtml's items table.
 export function CartTable({ lines }: { lines: CartLine[] }) {
   const [pending, startTransition] = useTransition();
+  // Which product's row is mid-update, so editing one line's quantity doesn't visually disable
+  // every other row's remove button too — pending alone (a single shared boolean) can't tell rows
+  // apart since router.refresh() re-renders the whole table for any of them.
+  const [activeProductId, setActiveProductId] = useState<number | null>(null);
   const router = useRouter();
   const toast = useToast();
 
   function handleQuantityChange(productId: number, quantity: number) {
+    setActiveProductId(productId);
     startTransition(async () => {
       await updateCartQuantityAction(productId, quantity);
       router.refresh();
@@ -21,6 +26,7 @@ export function CartTable({ lines }: { lines: CartLine[] }) {
   }
 
   function handleRemove(productId: number) {
+    setActiveProductId(productId);
     startTransition(async () => {
       await removeFromCartAction(productId);
       toast.success("Item removed from your cart.");
@@ -43,7 +49,9 @@ export function CartTable({ lines }: { lines: CartLine[] }) {
           </tr>
         </thead>
         <tbody>
-          {lines.map((line) => (
+          {lines.map((line) => {
+            const rowBusy = pending && activeProductId === line.product.id;
+            return (
             <tr key={line.id}>
               <td style={{ width: 90 }}>
                 <Link href={`/shop/${line.product.id}`}>
@@ -65,7 +73,7 @@ export function CartTable({ lines }: { lines: CartLine[] }) {
               </td>
               <td className="text-end">₹{Math.round(line.product.price).toLocaleString("en-IN")}</td>
               <td>
-                <div className="d-flex justify-content-center">
+                <div className="d-flex justify-content-center align-items-center gap-2">
                   <input
                     type="number"
                     defaultValue={line.quantity}
@@ -73,22 +81,30 @@ export function CartTable({ lines }: { lines: CartLine[] }) {
                     max={line.product.stock_quantity}
                     className="form-control form-control-sm text-center"
                     style={{ width: 70 }}
-                    disabled={pending}
+                    disabled={rowBusy}
                     onBlur={(e) => {
                       const q = Number(e.target.value);
                       if (Number.isFinite(q) && q !== line.quantity) handleQuantityChange(line.product.id, q);
                     }}
                   />
+                  {rowBusy && <span className="wos-btn-spinner" aria-hidden="true" />}
                 </div>
               </td>
               <td className="text-end fw-bold">₹{Math.round(line.product.price * line.quantity).toLocaleString("en-IN")}</td>
               <td className="text-end">
-                <button type="button" className="btn btn-sm btn-outline-danger" title="Remove" disabled={pending} onClick={() => handleRemove(line.product.id)}>
-                  ✕
+                <button
+                  type="button"
+                  className={`btn btn-sm btn-outline-danger${rowBusy ? " is-busy" : ""}`}
+                  title="Remove"
+                  disabled={rowBusy}
+                  onClick={() => handleRemove(line.product.id)}
+                >
+                  {rowBusy ? <span className="wos-btn-spinner" aria-hidden="true" /> : "✕"}
                 </button>
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

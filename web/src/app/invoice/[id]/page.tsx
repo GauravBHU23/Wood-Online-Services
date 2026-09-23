@@ -37,11 +37,20 @@ export default async function InvoicePage({ params }: { params: Promise<PagePara
   const isAdmin = (profileResult.data as { role: "customer" | "admin" } | null)?.role === "admin";
 
   // Admins may view any order's invoice; customers only their own (RLS-equivalent check done
-  // here explicitly since this route reads via the service role for the admin case).
-  const order = isAdmin
-    ? ((await admin.from("orders").select("*, items:order_items(*)").eq("id", orderId).maybeSingle()).data as Awaited<ReturnType<typeof getOrderById>>)
-    : await getOrderById(orderId, user.id);
-  const site = await getSiteSettingsFull();
+  // here explicitly since this route reads via the service role for the admin case). The order
+  // fetch strategy depends on isAdmin, but site settings don't depend on either — fetched in
+  // parallel with whichever order query runs.
+  const [order, site] = await Promise.all([
+    isAdmin
+      ? admin
+          .from("orders")
+          .select("*, items:order_items(*)")
+          .eq("id", orderId)
+          .maybeSingle()
+          .then((r) => r.data as Awaited<ReturnType<typeof getOrderById>>)
+      : getOrderById(orderId, user.id),
+    getSiteSettingsFull(),
+  ]);
   if (!order || !site) notFound();
 
   const invoice = buildInvoice(order, site);

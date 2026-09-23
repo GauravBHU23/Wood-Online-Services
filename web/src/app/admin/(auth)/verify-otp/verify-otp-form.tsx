@@ -143,8 +143,14 @@ export function VerifyOtpForm({ token: initialToken, returnUrl }: { token: strin
           </form>
 
           <div className="text-center mt-3">
-            <button type="button" className="btn btn-outline-wood btn-sm" disabled={remaining > 0 || resending} onClick={handleResend}>
-              Resend code {remaining > 0 && <span>{formatTime(remaining)}</span>}
+            <button
+              type="button"
+              className={`btn btn-outline-wood btn-sm${resending ? " is-busy" : ""}`}
+              disabled={remaining > 0 || resending}
+              onClick={handleResend}
+            >
+              {resending && <span className="wos-btn-spinner" aria-hidden="true" />}
+              {resending ? "Resending..." : "Resend code"} {!resending && remaining > 0 && <span>{formatTime(remaining)}</span>}
             </button>
           </div>
         </div>

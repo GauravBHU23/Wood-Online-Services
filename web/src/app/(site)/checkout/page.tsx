@@ -17,15 +17,15 @@ export default async function CheckoutPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/account/login?returnUrl=/checkout");
 
-  const cart = await getCart();
+  const admin = createAdminClient();
+  // Neither query depends on the other's result — fetched in parallel instead of one after
+  // another to shave a round trip off this page's load time.
+  const [cart, profileResult] = await Promise.all([
+    getCart(),
+    admin.from("profiles").select("full_name, address, city, state, pin_code").eq("id", user.id).maybeSingle(),
+  ]);
   if (cart.isEmpty) redirect("/cart");
 
-  const admin = createAdminClient();
-  const profileResult = await admin
-    .from("profiles")
-    .select("full_name, address, city, state, pin_code")
-    .eq("id", user.id)
-    .maybeSingle();
   const profile = profileResult.data as {
     full_name: string;
     address: string | null;

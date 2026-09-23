@@ -227,10 +227,13 @@ export interface CategoryWithCount extends Category {
 /** Active categories with their available-product count, for the home page category grid. */
 export async function getCategoriesWithCounts(): Promise<CategoryWithCount[]> {
   const supabase = await createClient();
-  const categoriesResult = await supabase.from("categories").select("*").eq("is_active", true).order("display_order");
+  // The two queries don't depend on each other — run in parallel, same pattern as
+  // lib/data/admin-categories.ts#getAdminCategories()'s identical categories+counts shape.
+  const [categoriesResult, countsResult] = await Promise.all([
+    supabase.from("categories").select("*").eq("is_active", true).order("display_order"),
+    supabase.from("products").select("category_id").eq("is_available", true),
+  ]);
   const categories: Category[] = categoriesResult.data ?? [];
-
-  const countsResult = await supabase.from("products").select("category_id").eq("is_available", true);
   const countRows: { category_id: number }[] = countsResult.data ?? [];
 
   const counts = new Map<number, number>();

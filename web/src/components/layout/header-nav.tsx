@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { logoutAction } from "@/lib/auth/actions";
 import { SearchBox } from "@/components/layout/search-box";
+import { LogoutButton } from "@/components/layout/logout-button";
 
 // Ported from the navbar markup in Views/Shared/_Layout.cshtml, re-implemented with React state
 // instead of Bootstrap's JS (Bootstrap's own collapse/dropdown JS fights React's DOM diffing),
@@ -136,9 +137,7 @@ export function HeaderNav({
                 </li>
                 <li>
                   <form action={logoutAction} className="px-1">
-                    <button type="submit" className="dropdown-item">
-                      Sign Out
-                    </button>
+                    <LogoutButton />
                   </form>
                 </li>
               </ul>

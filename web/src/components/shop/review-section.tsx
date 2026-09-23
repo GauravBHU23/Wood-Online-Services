@@ -45,6 +45,10 @@ export function ReviewSection({
   const [votes, setVotes] = useState<Record<number, { voted: boolean; count: number }>>(
     Object.fromEntries(reviews.map((r) => [r.id, { voted: votedReviewIds.includes(r.id), count: r.helpful_count }]))
   );
+  // Guards against a double-click firing two requests before the first's optimistic toggle even
+  // settles — not shown as a spinner (the toggle is deliberately optimistic/instant-feeling), just
+  // blocks a second click on the same review while one is already in flight.
+  const [pendingVoteIds, setPendingVoteIds] = useState<Set<number>>(new Set());
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -82,10 +86,11 @@ export function ReviewSection({
   }
 
   async function handleHelpful(reviewId: number) {
-    if (!isSignedIn) return;
+    if (!isSignedIn || pendingVoteIds.has(reviewId)) return;
     const current = votes[reviewId] ?? { voted: false, count: 0 };
     // Optimistic toggle, matching the original's instant UI feedback.
     setVotes((v) => ({ ...v, [reviewId]: { voted: !current.voted, count: current.count + (current.voted ? -1 : 1) } }));
+    setPendingVoteIds((s) => new Set(s).add(reviewId));
 
     try {
       const res = await fetch(`/api/reviews/${reviewId}/helpful`, { method: "POST" });
@@ -98,6 +103,12 @@ export function ReviewSection({
     } catch {
       setVotes((v) => ({ ...v, [reviewId]: current }));
       toast.error("We could not reach the server. Please try again.");
+    } finally {
+      setPendingVoteIds((s) => {
+        const next = new Set(s);
+        next.delete(reviewId);
+        return next;
+      });
     }
   }
 
@@ -282,7 +293,12 @@ export function ReviewSection({
                         )}
 
                         {isSignedIn ? (
-                          <button type="button" className={`helpful-btn${vote.voted ? " is-voted" : ""}`} onClick={() => handleHelpful(review.id)}>
+                          <button
+                            type="button"
+                            className={`helpful-btn${vote.voted ? " is-voted" : ""}`}
+                            disabled={pendingVoteIds.has(review.id)}
+                            onClick={() => handleHelpful(review.id)}
+                          >
                             Helpful <span>({vote.count})</span>
                           </button>
                         ) : (

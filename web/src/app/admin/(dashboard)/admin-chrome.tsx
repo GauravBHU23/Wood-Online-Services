@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { adminLogoutAction } from "@/lib/auth/admin-actions";
 import { useRouter } from "next/navigation";
 
@@ -36,6 +36,7 @@ export function AdminChrome({
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [loggingOut, startLogout] = useTransition();
 
   function isActive(section: string) {
     return pathname === `/admin/${section}` || pathname.startsWith(`/admin/${section}/`);
@@ -73,10 +74,12 @@ export function AdminChrome({
     );
   }
 
-  async function handleLogout() {
-    await adminLogoutAction();
-    router.push("/admin/login");
-    router.refresh();
+  function handleLogout() {
+    startLogout(async () => {
+      await adminLogoutAction();
+      router.push("/admin/login");
+      router.refresh();
+    });
   }
 
   return (
@@ -139,8 +142,9 @@ export function AdminChrome({
                   </li>
                   <li>
                     <form action={handleLogout} className="px-1">
-                      <button type="submit" className="dropdown-item">
-                        Logout
+                      <button type="submit" className={`dropdown-item${loggingOut ? " is-busy" : ""}`} disabled={loggingOut}>
+                        {loggingOut && <span className="wos-btn-spinner" aria-hidden="true" />}
+                        {loggingOut ? "Signing out..." : "Logout"}
                       </button>
                     </form>
                   </li>

@@ -38,6 +38,7 @@ export function ProductForm({
   const [pending, startTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [deletingImageId, setDeletingImageId] = useState<number | null>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -75,12 +76,17 @@ export function ProductForm({
     const ok = await confirm({ title: "Remove image", message: "Remove this image?", tone: "danger" });
     if (!ok) return;
 
-    const result = await deleteProductImageAction(imageId);
-    if (result.success) {
-      setImages((prev) => prev.filter((i) => i.id !== imageId));
-      toast.success(result.message ?? "Image removed.");
-    } else {
-      toast.error(result.message ?? "Could not remove image.");
+    setDeletingImageId(imageId);
+    try {
+      const result = await deleteProductImageAction(imageId);
+      if (result.success) {
+        setImages((prev) => prev.filter((i) => i.id !== imageId));
+        toast.success(result.message ?? "Image removed.");
+      } else {
+        toast.error(result.message ?? "Could not remove image.");
+      }
+    } finally {
+      setDeletingImageId(null);
     }
   }
 
@@ -305,11 +311,12 @@ export function ProductForm({
                         />
                         <button
                           type="button"
-                          className="btn btn-sm btn-danger position-absolute top-0 end-0 p-0"
+                          className={`btn btn-sm btn-danger position-absolute top-0 end-0 p-0${deletingImageId === img.id ? " is-busy" : ""}`}
                           style={{ width: 20, height: 20, lineHeight: 1, fontSize: ".7rem" }}
+                          disabled={deletingImageId === img.id}
                           onClick={() => handleDeleteImage(img.id)}
                         >
-                          ✕
+                          {deletingImageId === img.id ? <span className="wos-btn-spinner" aria-hidden="true" /> : "✕"}
                         </button>
                       </div>
                     ))}

@@ -10,10 +10,10 @@ export default async function AdminAuthLayout({ children }: { children: React.Re
       <div className="container py-5">
         <div className="row">
           <div className="col-md-6 col-lg-5 mx-auto">
+            {/* Ported verbatim from _AdminAuthLayout.cshtml: <img src="~/img/logo.svg" .../> at
+                max-width:220px. */}
             <div className="text-center mb-4">
-              <div style={{ color: "#fff", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.6rem" }}>
-                {site.shop_name}
-              </div>
+              <img src="/img/logo.svg" alt={site.shop_name} style={{ maxWidth: 220, height: "auto" }} />
               <div
                 className="mt-2"
                 style={{ color: "var(--wood-200,#e5d3c0)", fontSize: ".85rem", letterSpacing: ".08em", textTransform: "uppercase" }}

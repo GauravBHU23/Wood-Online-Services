@@ -83,8 +83,9 @@ export function AdminChrome({
     <>
       <nav className="navbar navbar-expand-lg navbar-wood sticky-top no-print">
         <div className="container-fluid px-3 px-lg-4">
+          {/* Ported verbatim from _AdminLayout.cshtml: <img src="~/img/logo.svg" alt="@site.ShopName" /> */}
           <Link className="navbar-brand d-flex align-items-center gap-2" href="/admin">
-            <span style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>{shopName}</span>
+            <img src="/img/logo.svg" alt={shopName} />
             <span className="badge badge-wood">ADMIN</span>
           </Link>
 

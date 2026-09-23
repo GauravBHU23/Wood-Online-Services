@@ -42,10 +42,11 @@ export async function Header() {
       <header>
         <nav className="navbar navbar-expand-lg navbar-wood sticky-top">
           <div className="container">
+            {/* Ported verbatim from _Layout.cshtml: <img src="~/img/logo.svg" alt="@site.ShopName"
+                width="340" height="64" /> — the logo file itself renders the shop name/tagline as
+                SVG text, so there's no separate text fallback here (matching the original). */}
             <Link className="navbar-brand" href="/" aria-label={`${site.shop_name} home`}>
-              <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.4rem", color: "var(--wood-900)" }}>
-                {site.shop_name}
-              </span>
+              <img src="/img/logo.svg" alt={site.shop_name} width={340} height={64} />
             </Link>
 
             <HeaderNav cartCount={cartCount} isSignedIn={!!user} isAdmin={isAdmin} fullName={fullName} />

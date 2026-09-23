@@ -24,6 +24,11 @@ const ADMIN_ANONYMOUS_PATHS = ["/admin/login", "/admin/verify-otp"];
 // themselves from inside the action (see lib/auth/actions.ts and friends), since every Server
 // Action POSTs to its own page's URL and can't be told apart here by path alone.
 //
+// A path matching NONE of these prefixes (i.e. an ordinary page navigation — home, shop, product
+// pages, account pages, ...) is not rate-limited at all here — see the comment where this array
+// is consulted in proxy() for why that's an intentional performance trade rather than an
+// oversight.
+//
 // Order matters: the first prefix match wins, so list longer/more-specific paths first when they
 // nest under a shorter one that would otherwise match first (none currently do, but keep this in
 // mind when adding routes).
@@ -105,20 +110,36 @@ export async function proxy(request: NextRequest) {
   // tell which order to look up, and see "we could not identify that payment" despite having paid.
   const pathWithQuery = path + request.nextUrl.search;
 
-  // ---------------------------------------------------------------- rate limiting
-  // API routes get their specific policy (sensitive/webhook where listed); every other page
-  // request falls back to "general", matching the original's two MapControllerRoute calls both
-  // being .RequireRateLimiting("general") — i.e. ordinary browsing is limited too, just generously.
+  // ---------------------------------------------------------------- rate limiting + session check
+  // Both of these are independent Postgres round trips (rate limiting's check_rate_limit() RPC,
+  // and the single-device session lookup below) that don't depend on each other's result, so they
+  // run in parallel — this alone roughly halves the DB-latency tax this middleware adds whenever
+  // both actually run.
+  //
+  // Rate limiting itself now only runs for routes explicitly listed in API_RATE_LIMITS (sensitive
+  // actions worth abuse-protecting: login/register/checkout/review-submit/the webhook/etc. — see
+  // that array) rather than on every single page navigation. Ordinary page browsing (home, shop,
+  // product pages, ...) used to pay a Postgres round trip on every click for a "general" policy
+  // whose 100/min limit a real visitor never gets remotely close to — the original's blanket
+  // RequireRateLimiting("general") made sense with .NET's in-process, ~free rate limiter, but
+  // paying a real network round trip for a limit that's effectively a no-op for genuine traffic
+  // is a bad trade here; abuse/scraping protection is still fully in place on every action an
+  // attacker would actually want to hammer (auth, checkout, submissions), which is what actually
+  // matters. Fails open the same way as before if this ever needs re-enabling broadly.
   const isCronRoute = path.startsWith("/api/cron");
-  if (!isCronRoute) {
-    const apiPolicy = API_RATE_LIMITS.find((r) => path.startsWith(r.prefix));
-    const policy = apiPolicy?.policy ?? "general";
-    const forwardedFor = request.headers.get("x-forwarded-for");
-    const clientKey = clientKeyFor(user?.id ?? null, forwardedFor, null);
-    const result = await checkRateLimit(clientKey, policy);
-    if (!result.allowed) {
-      return rateLimitResponse(result.retryAfterSeconds);
-    }
+  const apiPolicy = API_RATE_LIMITS.find((r) => path.startsWith(r.prefix));
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  const clientKey = clientKeyFor(user?.id ?? null, forwardedFor, null);
+
+  const [rateLimitResult, profileResult] = await Promise.all([
+    apiPolicy && !isCronRoute ? checkRateLimit(clientKey, apiPolicy.policy) : Promise.resolve(null),
+    user
+      ? createAdminClient().from("profiles").select("current_session_id").eq("id", user.id).maybeSingle()
+      : Promise.resolve(null),
+  ]);
+
+  if (rateLimitResult && !rateLimitResult.allowed) {
+    return rateLimitResponse(rateLimitResult.retryAfterSeconds);
   }
 
   // ---------------------------------------------------------------- single-device session check
@@ -130,13 +151,7 @@ export async function proxy(request: NextRequest) {
   // rejected, so this can never mass-logout everyone the moment it ships.
   if (user) {
     const sessionCookie = request.cookies.get(SESSION_COOKIE)?.value ?? null;
-    const admin = createAdminClient();
-    const profileResult = await admin
-      .from("profiles")
-      .select("current_session_id")
-      .eq("id", user.id)
-      .maybeSingle();
-    const currentSessionId = (profileResult.data as { current_session_id: string | null } | null)
+    const currentSessionId = (profileResult?.data as { current_session_id: string | null } | null)
       ?.current_session_id;
 
     if (currentSessionId && sessionCookie && currentSessionId !== sessionCookie) {

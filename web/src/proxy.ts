@@ -10,6 +10,13 @@ import { SESSION_COOKIE } from "@/lib/auth/session";
 // itself (returnUrl=/account/login) for a signed-out visitor, an infinite loop.
 const PROTECTED_PREFIXES = ["/account/profile", "/account/change-password", "/checkout", "/orders"];
 const ADMIN_PREFIX = "/admin";
+// Matches Areas/Admin/Controllers/AuthController.cs having no class-level [Authorize] — Login and
+// VerifyOtp (GET and POST) are both anonymous-accessible by design, since the whole point of
+// VerifyOtp is to complete a sign-in that hasn't happened yet. Treating every "/admin" path as
+// needing a session (as the customer-side bug once did for "/account") makes /admin/verify-otp
+// redirect straight back to /admin/login before the OTP form ever renders — the admin never sees
+// anywhere to type the code they were emailed.
+const ADMIN_ANONYMOUS_PATHS = ["/admin/login", "/admin/verify-otp"];
 
 // Ported from the [EnableRateLimiting("...")] attributes across the original's *ApiControllers —
 // see lib/rate-limit.ts for the policy definitions. Only Route Handlers (real, matchable URLs)
@@ -126,7 +133,7 @@ export async function proxy(request: NextRequest) {
       ?.current_session_id;
 
     if (currentSessionId && sessionCookie && currentSessionId !== sessionCookie) {
-      const needsAdminHere = path.startsWith(ADMIN_PREFIX) && path !== "/admin/login";
+      const needsAdminHere = path.startsWith(ADMIN_PREFIX) && !ADMIN_ANONYMOUS_PATHS.includes(path);
       const url = request.nextUrl.clone();
       url.pathname = needsAdminHere ? "/admin/login" : "/account/login";
       url.searchParams.set("returnUrl", path);
@@ -147,7 +154,7 @@ export async function proxy(request: NextRequest) {
 
   // ---------------------------------------------------------------- auth gating
   const needsAuth = PROTECTED_PREFIXES.some((p) => path.startsWith(p));
-  const needsAdmin = path.startsWith(ADMIN_PREFIX) && path !== "/admin/login";
+  const needsAdmin = path.startsWith(ADMIN_PREFIX) && !ADMIN_ANONYMOUS_PATHS.includes(path);
 
   if ((needsAuth || needsAdmin) && !user) {
     const redirectTo = needsAdmin ? "/admin/login" : "/account/login";

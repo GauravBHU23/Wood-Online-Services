@@ -32,10 +32,18 @@ export async function registerAction(input: RegisterInput): Promise<ActionResult
   const { fullName, email, phoneNumber, password } = parsed.data;
 
   const supabase = await createClient();
+  const siteBaseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { full_name: fullName.trim() } },
+    options: {
+      data: { full_name: fullName.trim() },
+      // Without this, Supabase falls back to the project's dashboard-configured "Site URL" to
+      // build the confirmation link — which can silently point at localhost if that setting was
+      // never updated after deploying. Passing it explicitly makes the app's own env var the
+      // source of truth regardless of what the dashboard has.
+      emailRedirectTo: siteBaseUrl ? `${siteBaseUrl}/account/login` : undefined,
+    },
   });
 
   if (error) {
@@ -75,7 +83,6 @@ export async function registerAction(input: RegisterInput): Promise<ActionResult
   await mergeGuestCartIntoUser(user.id);
 
   const site = await getSiteSettingsPublic();
-  const siteBaseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
   await notifyWelcome(toEmailConfig(site, siteBaseUrl), email, fullName.trim());
 
   revalidatePath("/", "layout");

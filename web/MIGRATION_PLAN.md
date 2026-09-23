@@ -12,9 +12,29 @@ one should match it, not the other way round.
 Every customer-facing flow, the full admin panel, payments, email, chatbot, and PWA support are
 built and ported feature-for-feature from the original. **A real Supabase project exists**
 (`tixrybyedvarwsmgoqef`) with migrations 0001–0008 applied and verified against live data;
-**migration 0009 (single-device session) is written but not yet applied** — see its own note
-below and in that file. `npm run build` / `npx tsc --noEmit` / `npx eslint` all pass clean. Live
-at `wood-online-service.vercel.app`.
+**migrations 0009 (single-device session) and 0010 (site_settings_public fix, see below) are
+written but not yet applied** — see their own notes below and in each file. `npm run build` /
+`npx tsc --noEmit` / `npx eslint` all pass clean. Live at `wood-online-service.vercel.app`.
+
+### Bug found from a screenshot, not the audit: site_settings never actually reached the storefront
+
+`site_settings_public` (the view every customer-facing page reads shop name/phone/address/GST
+rate/shipping charge/feature flags from) was created `with (security_invoker = true)` — so it ran
+under the CALLER's own row permissions on the underlying `site_settings` table, not the view
+owner's. That table has no anon/authenticated RLS policy at all (by design, since the base table
+also holds the Cashfree/Gemini secret columns), so every anon/authenticated query against the view
+silently matched zero rows — no error, RLS just filtered everything out. `getSiteSettingsPublic()`
+in `lib/data/site-settings.ts` then always fell through to its hardcoded `FALLBACK_PUBLIC`
+constant. **Practical effect: every customer-facing page has been showing the placeholder
+values since launch, never whatever is actually in the `site_settings` table** — this was caught
+by noticing two screenshots of the live site showing different shop names, not by the feature
+audit (which never exercises RLS from the anon role, since all its data-layer checks ran through
+the service-role client). Fixed in migration `0010_fix_site_settings_public_view.sql` by dropping
+`security_invoker` so the view runs with its owner's privileges — safe specifically because the
+view already projects away every secret column; a table that genuinely needed row-level filtering
+would need a different fix. **Not yet applied to the live project** — apply it (paste into the SQL
+Editor) before trusting anything the admin changes in `site_settings` to actually show up on the
+storefront.
 
 ### Post-launch feature-parity audit (found 6 real gaps, all fixed)
 
@@ -179,11 +199,16 @@ recur, but reconcile the seed/RLS-only knowledge (doc comments, the `Table`/`Vie
 
 1. **Create the Supabase project** — done. Project `tixrybyedvarwsmgoqef`, migrations 0001–0008
    applied and verified (categories/products/site_settings_public/storage buckets/rate_limits all
-   confirmed via direct REST calls against live data). **Migration
-   `0009_single_device_session.sql` is written but NOT YET applied** — paste it into the SQL
-   Editor (it's additive, safe to run any time; nothing else depends on it existing, since
-   `src/proxy.ts`'s session check fails open — treats a missing/null `current_session_id` as
-   not-yet-enforced — if the column is missing).
+   confirmed via direct REST calls against live data — note that "confirmed" there was via the
+   service-role key, which is how migration 0010's bug went unnoticed; always double-check
+   anon-role reads too). **Migrations `0009_single_device_session.sql` and
+   `0010_fix_site_settings_public_view.sql` are written but NOT YET applied** — paste both into
+   the SQL Editor, 0009 then 0010 (order doesn't actually matter between these two, but keep
+   ascending-filename order as the general rule). 0009 is inert but harmless without being
+   applied (`src/proxy.ts`'s session check fails open on a missing column). **0010 is not
+   optional** — until it's applied, every admin change to Settings (shop name, phone, address,
+   GST rate, shipping charge, feature flags) silently never reaches the storefront, which still
+   shows hardcoded placeholder values to every visitor.
 2. **Manually promote one account to admin** — nothing in the app can do this (by design, so no
    API path can self-elevate). Done: `gauravkum1275@gmail.com` promoted via
    `update public.profiles set role = 'admin' where id = '4b70f059-060e-4e1f-b99d-d5aceed27975';`

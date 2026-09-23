@@ -3,7 +3,7 @@ import "./globals.css";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { ConfirmProvider } from "@/components/ui/confirm-modal";
 import { FlashMessages } from "@/components/layout/flash-messages";
-import { readAndClearFlashes } from "@/lib/flash";
+import { readFlashes } from "@/lib/flash";
 import { getSiteSettingsPublic } from "@/lib/data/site-settings";
 
 // Root layout: shared by every route, including the admin dashboard and the standalone admin
@@ -30,7 +30,7 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const flashes = await readAndClearFlashes();
+  const flashes = await readFlashes();
 
   return (
     <html lang="en">

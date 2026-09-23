@@ -119,6 +119,7 @@ export async function trackAndGetVisitor(
       cookieStore.set(SESSION_COOKIE, crypto.randomUUID().replace(/-/g, ""), {
         httpOnly: true,
         sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
         maxAge: 60 * 60 * 24,
         path: "/",
       });

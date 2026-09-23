@@ -76,6 +76,7 @@ export async function getOrCreateCartKey(): Promise<{ key: string; userId: strin
   cookieStore.set(GUEST_CART_COOKIE, fresh, {
     httpOnly: true,
     sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
     maxAge: 60 * 60 * 24 * 30,
     path: "/",
   });

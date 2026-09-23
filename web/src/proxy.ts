@@ -97,6 +97,13 @@ function rateLimitResponse(retryAfterSeconds: number): NextResponse {
 export async function proxy(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);
   const path = request.nextUrl.pathname;
+  // Used for returnUrl specifically: includes the query string, so a query-param-dependent
+  // destination (e.g. /checkout/payment-callback?order_id=..., or /orders/5?awaiting=true)
+  // still has what it needs after the customer logs in and is sent back. Cashfree's callback in
+  // particular relies on order_id surviving this round trip — without it, a customer whose
+  // session happened to expire mid-payment would land back on a callback page that can no longer
+  // tell which order to look up, and see "we could not identify that payment" despite having paid.
+  const pathWithQuery = path + request.nextUrl.search;
 
   // ---------------------------------------------------------------- rate limiting
   // API routes get their specific policy (sensitive/webhook where listed); every other page
@@ -136,7 +143,7 @@ export async function proxy(request: NextRequest) {
       const needsAdminHere = path.startsWith(ADMIN_PREFIX) && !ADMIN_ANONYMOUS_PATHS.includes(path);
       const url = request.nextUrl.clone();
       url.pathname = needsAdminHere ? "/admin/login" : "/account/login";
-      url.searchParams.set("returnUrl", path);
+      url.searchParams.set("returnUrl", pathWithQuery);
       url.searchParams.set("sessionExpired", "1");
       const redirectResponse = NextResponse.redirect(url);
 
@@ -160,7 +167,7 @@ export async function proxy(request: NextRequest) {
     const redirectTo = needsAdmin ? "/admin/login" : "/account/login";
     const url = request.nextUrl.clone();
     url.pathname = redirectTo;
-    url.searchParams.set("returnUrl", path);
+    url.searchParams.set("returnUrl", pathWithQuery);
     return applySecurityHeaders(NextResponse.redirect(url));
   }
 

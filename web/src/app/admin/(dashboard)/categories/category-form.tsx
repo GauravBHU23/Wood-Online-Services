@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createCategoryAction, updateCategoryAction } from "@/lib/admin/category-actions";
 import { useToast } from "@/components/ui/toast-provider";
+import { categorySchema } from "@/lib/validation/schemas";
 import type { CategoryFormData } from "@/lib/data/admin-categories";
 
 // Ported from Areas/Admin/Views/Categories/Form.cshtml.
@@ -34,8 +35,10 @@ export function CategoryForm({
     setFormError(null);
     setErrors({});
 
-    if (!form.name.trim()) {
-      setErrors({ name: ["Category name is required"] });
+    // Ported from CategoryFormViewModel's DataAnnotations — see schemas.ts's categorySchema.
+    const parsed = categorySchema.safeParse(form);
+    if (!parsed.success) {
+      setErrors(parsed.error.flatten().fieldErrors as Record<string, string[]>);
       return;
     }
 

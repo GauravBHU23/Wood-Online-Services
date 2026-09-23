@@ -125,7 +125,10 @@ export async function trackAndGetVisitor(
     }
 
     const geo = await getGeoLocation(ip, geoEnabled);
-    const total = await recordVisit(ip, geo, isNewSession, landingPage);
+    const h = await headers();
+    const userAgent = h.get("user-agent");
+    const referrer = h.get("referer");
+    const total = await recordVisit(ip, geo, isNewSession, landingPage, userAgent, referrer);
 
     return {
       ipAddress: ip,
@@ -144,7 +147,9 @@ async function recordVisit(
   ip: string,
   geo: GeoResult | null,
   isNewSession: boolean,
-  landingPage: string
+  landingPage: string,
+  userAgent: string | null,
+  referrer: string | null
 ): Promise<number> {
   const admin = createAdminClient();
   const todayStart = new Date();
@@ -172,6 +177,8 @@ async function recordVisit(
       country: geo?.country ?? null,
       country_code: geo?.countryCode ?? null,
       landing_page: landingPage.slice(0, 300),
+      user_agent: userAgent ? userAgent.slice(0, 300) : null,
+      referrer: referrer ? referrer.slice(0, 300) : null,
     };
     await admin.from("visitor_logs").insert(insert);
   }

@@ -6,8 +6,8 @@ export const metadata: Metadata = { title: "Admin Sign In" };
 export default async function AdminLoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ returnUrl?: string }>;
+  searchParams: Promise<{ returnUrl?: string; sessionExpired?: string }>;
 }) {
-  const { returnUrl } = await searchParams;
-  return <AdminLoginForm returnUrl={returnUrl} />;
+  const { returnUrl, sessionExpired } = await searchParams;
+  return <AdminLoginForm returnUrl={returnUrl} sessionExpired={sessionExpired === "1"} />;
 }

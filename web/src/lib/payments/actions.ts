@@ -182,14 +182,16 @@ export async function applySimulatedOutcomeAction(requestId: string, outcome: "s
   }
 
   const succeeded = outcome === "success";
+  const simulatedPaymentMethod = method ? `${method} (simulated)` : "UPI (simulated)";
+  const simulatedPaymentId = succeeded ? "SIMPAY-" + Math.random().toString(36).slice(2, 14).toUpperCase() : null;
 
   await updateTransaction(transaction.id, {
-    payment_method: method ? `${method} (simulated)` : "UPI (simulated)",
+    payment_method: simulatedPaymentMethod,
     completed_at: new Date().toISOString(),
     is_webhook_verified: true,
     gateway_response: "Simulated payment, outcome chosen by the customer.",
     status: succeeded ? "success" : "failed",
-    payment_id: succeeded ? "SIMPAY-" + Math.random().toString(36).slice(2, 14).toUpperCase() : null,
+    payment_id: simulatedPaymentId,
     failure_reason: succeeded ? null : "Payment cancelled on the gateway.",
   });
 
@@ -200,14 +202,22 @@ export async function applySimulatedOutcomeAction(requestId: string, outcome: "s
   if (succeeded) {
     const orderPatch: Database["public"]["Tables"]["orders"]["Update"] = {
       payment_status: "paid",
-      payment_reference: "SIMPAY",
+      // The real generated id (e.g. SIMPAY-A1B2C3D4E5F6), not the literal string "SIMPAY" —
+      // matches CheckoutController.cs passing the real transaction through to the success email
+      // and persisted reference, rather than a placeholder.
+      payment_reference: simulatedPaymentId ?? "SIMPAY",
       ...(order.order_status === "pending" ? { order_status: "confirmed" as const } : {}),
     };
     await admin.from("orders").update(orderPatch).eq("id", order.id);
 
     const emailOrder = await toEmailOrder(order);
     await notifyOrderPlaced(emailConfig, emailOrder, user.email ?? null);
-    await notifyPaymentSuccess(emailConfig, emailOrder, { amount: order.total_amount, payment_method: "UPI (simulated)", payment_id: null, failure_reason: null }, user.email ?? null);
+    await notifyPaymentSuccess(
+      emailConfig,
+      emailOrder,
+      { amount: order.total_amount, payment_method: simulatedPaymentMethod, payment_id: simulatedPaymentId, failure_reason: null },
+      user.email ?? null
+    );
 
     return { success: true, message: "Payment successful. Thank you!", redirectTo: `/checkout/success?orderNumber=${order.order_number}` };
   }

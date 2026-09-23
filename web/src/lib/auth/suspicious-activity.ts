@@ -1,4 +1,5 @@
 import "server-only";
+import { ADMIN_LOCKOUT_MINUTES } from "@/lib/auth/constants";
 
 // Ported from Services/SuspiciousActivityService.cs. Flags credential-stuffing-style behaviour:
 // many failed logins from one IP in a short window, regardless of which account each attempt
@@ -14,6 +15,14 @@ import "server-only";
 
 const FAILURE_THRESHOLD = 10;
 const TRACKING_WINDOW_MS = 10 * 60 * 1000;
+// The original's RecordFailedAttempt(ipAddress) takes NO duration parameter — it always blocks
+// for _security.AdminLockoutMinutes (30 min from appsettings.json), regardless of whether the
+// failed attempts came from the customer or admin login form. This is intentional: a
+// credential-stuffing IP block is a different, stricter concern than the per-account lockout
+// (which IS shorter for customers), so it always uses the longer duration. Do not parameterize
+// this by caller — that was a real regression once (customer-form IP blocks lasted only 10
+// minutes instead of 30) and got fixed by hardcoding this, matching the original exactly.
+const IP_BLOCK_MINUTES = ADMIN_LOCKOUT_MINUTES;
 
 interface Entry {
   count: number;
@@ -44,14 +53,14 @@ export function minutesRemaining(ip: string): number {
   return Math.max(0, Math.ceil((block.until - Date.now()) / 60000));
 }
 
-export function recordFailedAttempt(ip: string, lockoutMinutes: number): void {
+export function recordFailedAttempt(ip: string): void {
   prune();
   const existing = counts.get(ip);
   const count = (existing?.count ?? 0) + 1;
   counts.set(ip, { count, expiresAt: Date.now() + TRACKING_WINDOW_MS });
 
   if (count >= FAILURE_THRESHOLD) {
-    blocks.set(ip, { until: Date.now() + lockoutMinutes * 60000 });
+    blocks.set(ip, { until: Date.now() + IP_BLOCK_MINUTES * 60000 });
     counts.delete(ip);
   }
 }

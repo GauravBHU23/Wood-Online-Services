@@ -32,6 +32,7 @@ export interface Database {
           pin_code: string | null;
           role: AppRole;
           must_change_password: boolean;
+          current_session_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -43,6 +44,7 @@ export interface Database {
           pin_code?: string | null;
           role?: AppRole;
           must_change_password?: boolean;
+          current_session_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -54,6 +56,7 @@ export interface Database {
           pin_code?: string | null;
           role?: AppRole;
           must_change_password?: boolean;
+          current_session_id?: string | null;
           created_at?: string;
         };
         Relationships: [];

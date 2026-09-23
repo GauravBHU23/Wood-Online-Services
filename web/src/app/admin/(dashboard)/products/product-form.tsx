@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createProductAction, updateProductAction, deleteProductImageAction } from "@/lib/admin/product-actions";
 import { useConfirm } from "@/components/ui/confirm-modal";
 import { useToast } from "@/components/ui/toast-provider";
+import { productSchema } from "@/lib/validation/schemas";
 import type { ProductFormData } from "@/lib/data/admin-products";
 import type { Category, ProductImage } from "@/lib/data/products";
 
@@ -43,12 +44,14 @@ export function ProductForm({
     setFormError(null);
     setErrors({});
 
-    if (!form.name.trim()) {
-      setErrors({ name: ["Product name is required"] });
-      return;
-    }
-    if (!form.categoryId) {
-      setErrors({ categoryId: ["Please choose a category"] });
+    // Ported from ProductFormViewModel's DataAnnotations — see schemas.ts's productSchema for
+    // the exact limits. Custom-order items skip the price/stock checks since applyForm() zeroes
+    // those fields out server-side anyway for isCustomOrder (they're disabled inputs here too).
+    const parsed = productSchema.safeParse(
+      form.isCustomOrder ? { ...form, price: 0, oldPrice: null, stockQuantity: 0 } : form
+    );
+    if (!parsed.success) {
+      setErrors(parsed.error.flatten().fieldErrors as Record<string, string[]>);
       return;
     }
 

@@ -1,15 +1,16 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getClientIp } from "@/lib/utils/client-ip";
 import { checkLockout, recordFailedAttempt, recordSuccessfulLogin, setAdminBlock } from "@/lib/auth/lockout";
 import * as suspiciousActivity from "@/lib/auth/suspicious-activity";
-import { ADMIN_LOCKOUT_MINUTES } from "@/lib/auth/constants";
 import { issueAdminOtp, verifyAdminOtp, getOtpUserId } from "@/lib/auth/admin-otp";
 import { loginSchema, verifyOtpSchema, type LoginInput, type VerifyOtpInput } from "@/lib/validation/schemas";
 import type { ActionResult } from "@/lib/auth/types";
 import { enforceSensitiveRateLimit } from "@/lib/rate-limit";
+import { completeSignIn, SESSION_COOKIE } from "@/lib/auth/session";
 
 // Ported from Areas/Admin/Controllers/AuthController.cs. Admin sign-in is entirely separate
 // from the customer form: a different password check that rejects any non-Admin account
@@ -53,7 +54,7 @@ export async function adminLoginAction(input: LoginInput): Promise<AdminLoginRes
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error || !data.user) {
-    suspiciousActivity.recordFailedAttempt(ip, ADMIN_LOCKOUT_MINUTES);
+    suspiciousActivity.recordFailedAttempt(ip);
     const result = await recordFailedAttempt(email, true);
     if (result.justLocked) {
       return {
@@ -138,13 +139,19 @@ export async function adminVerifyOtpAction(input: VerifyOtpInput): Promise<Actio
   }
 
   const supabase = await createClient();
-  const { error: verifyError } = await supabase.auth.verifyOtp({
+  const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
     type: "magiclink",
     token_hash: linkResult.data.properties.hashed_token,
   });
 
   if (verifyError) {
     return { success: false, message: "Could not complete sign-in. Please try again." };
+  }
+
+  // Enforces one signed-in device per account, same as the customer login path — see
+  // lib/auth/session.ts. Ported from AuthController.cs:183's CompleteSignInAsync.
+  if (verifyData.session) {
+    await completeSignIn(userId, verifyData.session.access_token);
   }
 
   if (profile.must_change_password) {
@@ -162,6 +169,8 @@ export async function adminResendOtpAction(token: string) {
 export async function adminLogoutAction(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
+  const cookieStore = await cookies();
+  cookieStore.delete(SESSION_COOKIE);
 }
 
 export { setAdminBlock };

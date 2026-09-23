@@ -12,15 +12,31 @@ import {
   type ProductFormData,
 } from "@/lib/data/admin-products";
 import { saveImage, deleteImage, ImageValidationError, isSeedImage } from "@/lib/admin/image-service";
+import { productSchema } from "@/lib/validation/schemas";
 import type { ActionResult } from "@/lib/auth/types";
 
 // Ported from Areas/Admin/Controllers/ProductsController.cs.
+
+function validateProductForm(form: ProductFormData): Record<string, string[]> | null {
+  // Server-side re-check of the same rules the form validates client-side (ProductFormViewModel's
+  // DataAnnotations) — the client check alone isn't a security boundary, it's just a UX nicety
+  // that a direct call here would skip entirely.
+  const parsed = productSchema.safeParse(
+    form.isCustomOrder ? { ...form, price: 0, oldPrice: null, stockQuantity: 0 } : form
+  );
+  return parsed.success ? null : (parsed.error.flatten().fieldErrors as Record<string, string[]>);
+}
 
 export async function createProductAction(
   form: ProductFormData,
   mainImage: File | null,
   galleryImages: File[]
 ): Promise<ActionResult & { productId?: number }> {
+  const fieldErrors = validateProductForm(form);
+  if (fieldErrors) {
+    return { success: false, message: "Please fix the errors below.", fieldErrors };
+  }
+
   let imageUrl: string | null = null;
   try {
     imageUrl = await saveImage(mainImage, "products");
@@ -56,6 +72,11 @@ export async function updateProductAction(
   mainImage: File | null,
   galleryImages: File[]
 ): Promise<ActionResult> {
+  const fieldErrors = validateProductForm(form);
+  if (fieldErrors) {
+    return { success: false, message: "Please fix the errors below.", fieldErrors };
+  }
+
   const existing = await getAdminProductById(id);
   if (!existing) return { success: false, message: "Product not found." };
 

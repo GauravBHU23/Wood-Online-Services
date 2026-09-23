@@ -15,11 +15,19 @@ export async function GET(request: Request) {
   const escaped = term.replace(/[%_]/g, "\\$&");
   const supabase = await createClient();
 
+  // Matches the original's p.Category.Name.Contains(term) as well as name/wood type — PostgREST's
+  // .or() only filters the base table's own columns, so a category-name match has to be resolved
+  // as a separate id lookup first, then folded into the same .or() as an `category_id.in.(...)`
+  // clause (an empty list is fine: `.in.()` simply matches nothing extra).
+  const matchingCategoriesResult = await supabase.from("categories").select("id").ilike("name", `%${escaped}%`);
+  const matchingCategoryIds: number[] = (matchingCategoriesResult.data ?? []).map((c) => c.id as number);
+  const categoryClause = matchingCategoryIds.length > 0 ? `,category_id.in.(${matchingCategoryIds.join(",")})` : "";
+
   const result = await supabase
     .from("products")
     .select("id, name, category:categories(name), wood_type, price, is_custom_order, average_rating, review_count, image_url")
     .eq("is_available", true)
-    .or(`name.ilike.%${escaped}%,wood_type.ilike.%${escaped}%`)
+    .or(`name.ilike.%${escaped}%,wood_type.ilike.%${escaped}%${categoryClause}`)
     .order("is_featured", { ascending: false })
     .order("average_rating", { ascending: false })
     .limit(MAX_SUGGESTIONS);

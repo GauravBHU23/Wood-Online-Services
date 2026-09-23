@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mergeGuestCartIntoUser } from "@/lib/data/cart";
@@ -9,10 +10,10 @@ import { getClientIp } from "@/lib/utils/client-ip";
 import { registerSchema, loginSchema, type RegisterInput, type LoginInput } from "@/lib/validation/schemas";
 import { checkLockout, recordFailedAttempt, recordSuccessfulLogin } from "@/lib/auth/lockout";
 import * as suspiciousActivity from "@/lib/auth/suspicious-activity";
-import { LOCKOUT_MINUTES } from "@/lib/auth/constants";
 import { enforceSensitiveRateLimit } from "@/lib/rate-limit";
 import { getSiteSettingsPublic, toEmailConfig } from "@/lib/data/site-settings";
 import { notifyWelcome } from "@/lib/email/service";
+import { completeSignIn, SESSION_COOKIE } from "@/lib/auth/session";
 import type { Database } from "@/types/database";
 import type { ActionResult } from "@/lib/auth/types";
 
@@ -124,7 +125,7 @@ export async function loginAction(input: LoginInput): Promise<ActionResult> {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error || !data.user) {
-    suspiciousActivity.recordFailedAttempt(ip, LOCKOUT_MINUTES);
+    suspiciousActivity.recordFailedAttempt(ip);
     const result = await recordFailedAttempt(email, false);
     if (result.justLocked) {
       return {
@@ -154,6 +155,13 @@ export async function loginAction(input: LoginInput): Promise<ActionResult> {
   await recordSuccessfulLogin(email);
   await mergeGuestCartIntoUser(data.user.id);
 
+  // Enforces one signed-in device per account (ported from ApplicationUser.CurrentSessionId) —
+  // this sign-in now supersedes any other device's session, which gets rejected on its own next
+  // request. See lib/auth/session.ts.
+  if (data.session) {
+    await completeSignIn(data.user.id, data.session.access_token);
+  }
+
   revalidatePath("/", "layout");
 
   if (profile?.must_change_password) {
@@ -167,6 +175,8 @@ export async function loginAction(input: LoginInput): Promise<ActionResult> {
 export async function logoutAction(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
+  const cookieStore = await cookies();
+  cookieStore.delete(SESSION_COOKIE);
   revalidatePath("/", "layout");
   redirect("/");
 }

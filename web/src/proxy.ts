@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { checkRateLimit, clientKeyFor, RATE_LIMIT_MESSAGE, type RateLimitPolicy } from "@/lib/rate-limit";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { SESSION_COOKIE } from "@/lib/auth/session";
 
 // Matches AccountController.cs's actual [Authorize] placement: only Profile and
 // ChangePassword require a signed-in user. Login/Register/Logout/ForgotPassword/ResetPassword
@@ -102,6 +104,44 @@ export async function proxy(request: NextRequest) {
     const result = await checkRateLimit(clientKey, policy);
     if (!result.allowed) {
       return rateLimitResponse(result.retryAfterSeconds);
+    }
+  }
+
+  // ---------------------------------------------------------------- single-device session check
+  // Ported from Program.cs's OnValidatePrincipal: a signed-in request whose wos_session_id
+  // cookie doesn't match the account's current_session_id means another sign-in (or an admin
+  // block) has since superseded this device — reject it here, on this very request, same as the
+  // original. A profile with no current_session_id yet (rows created before migration 0009, or
+  // the rare race where the column read hasn't landed) is treated as not-yet-enforced rather than
+  // rejected, so this can never mass-logout everyone the moment it ships.
+  if (user) {
+    const sessionCookie = request.cookies.get(SESSION_COOKIE)?.value ?? null;
+    const admin = createAdminClient();
+    const profileResult = await admin
+      .from("profiles")
+      .select("current_session_id")
+      .eq("id", user.id)
+      .maybeSingle();
+    const currentSessionId = (profileResult.data as { current_session_id: string | null } | null)
+      ?.current_session_id;
+
+    if (currentSessionId && sessionCookie && currentSessionId !== sessionCookie) {
+      const needsAdminHere = path.startsWith(ADMIN_PREFIX) && path !== "/admin/login";
+      const url = request.nextUrl.clone();
+      url.pathname = needsAdminHere ? "/admin/login" : "/account/login";
+      url.searchParams.set("returnUrl", path);
+      url.searchParams.set("sessionExpired", "1");
+      const redirectResponse = NextResponse.redirect(url);
+
+      redirectResponse.cookies.delete(SESSION_COOKIE);
+      // Supabase's own session cookies are named sb-<project-ref>-auth-token (and a
+      // -code-verifier variant); clearing every sb-* cookie forces this device to re-authenticate
+      // rather than silently keep using a token the server already revoked on the new sign-in.
+      for (const cookie of request.cookies.getAll()) {
+        if (cookie.name.startsWith("sb-")) redirectResponse.cookies.delete(cookie.name);
+      }
+
+      return applySecurityHeaders(redirectResponse);
     }
   }
 

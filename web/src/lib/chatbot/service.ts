@@ -244,8 +244,15 @@ async function searchProducts(term: string): Promise<ChatProduct[]> {
   if (words.length === 0) return [];
 
   const supabase = await createClient();
+
   // Every word must appear somewhere (name, wood type, category or description), so "teak bed"
   // does not match every bed — built as a chained .or() per word rather than a single filter.
+  // Category name is matched too (ported from ChatbotService.cs's p.Category.Name.Contains(w)):
+  // PostgREST's .or() only filters the base table's own columns, so each word's matching
+  // category ids are resolved first and folded in as that word's `category_id.in.(...)` clause.
+  const categoriesResult = await supabase.from("categories").select("id, name");
+  const allCategories: { id: number; name: string }[] = (categoriesResult.data ?? []) as { id: number; name: string }[];
+
   let query = supabase
     .from("products")
     .select("id, name, price, is_custom_order, image_url, wood_type, category:categories(name), description")
@@ -253,8 +260,14 @@ async function searchProducts(term: string): Promise<ChatProduct[]> {
 
   for (const word of words) {
     const escaped = word.replace(/[%_]/g, "\\$&");
+    const lowerWord = word.toLowerCase();
+    const matchingCategoryIds = allCategories
+      .filter((c) => c.name.toLowerCase().includes(lowerWord))
+      .map((c) => c.id);
+    const categoryClause = matchingCategoryIds.length > 0 ? `,category_id.in.(${matchingCategoryIds.join(",")})` : "";
+
     query = query.or(
-      `name.ilike.%${escaped}%,wood_type.ilike.%${escaped}%,description.ilike.%${escaped}%`
+      `name.ilike.%${escaped}%,wood_type.ilike.%${escaped}%,description.ilike.%${escaped}%${categoryClause}`
     );
   }
 

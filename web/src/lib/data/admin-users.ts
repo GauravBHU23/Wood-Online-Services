@@ -1,10 +1,15 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { invalidateAllSessions } from "@/lib/auth/session";
 import type { OrderWithItems } from "@/lib/data/orders";
 
 // Ported from Areas/Admin/Controllers/UsersController.cs. "Blocked" reuses Supabase Auth's own
-// ban mechanism (updateUserById({ ban_duration })) — set far in the future it stops sign-in
-// exactly like a lockout does, so no separate flag or sign-in check is needed anywhere else.
+// ban mechanism (updateUserById({ ban_duration })) — set far in the future it stops future
+// sign-ins/token-refreshes exactly like a lockout does. That alone doesn't cut an ALREADY-active
+// session immediately though (their current access token stays valid until it naturally
+// expires), so blockUser() also rotates profiles.current_session_id — see lib/auth/session.ts —
+// which src/proxy.ts checks on every request, rejecting the blocked user's session on its very
+// next request. Ported from UsersController.cs:155's same force-logout-other-devices behavior.
 
 export interface UserListItem {
   userId: string;
@@ -152,6 +157,8 @@ export async function blockUser(id: string): Promise<{ success: boolean; message
 
   const { error } = await admin.auth.admin.updateUserById(id, { ban_duration: BLOCKED_DURATION });
   if (error) return { success: false, message: "Could not block this customer." };
+
+  await invalidateAllSessions(id);
 
   return { success: true, message: `${profile?.full_name ?? "Customer"} has been blocked.`, fullName: profile?.full_name };
 }

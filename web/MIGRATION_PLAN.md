@@ -7,16 +7,64 @@ The old app stays untouched during the migration — nothing here modifies `src/
 It is the reference for every business rule; when in doubt, that codebase is correct and this
 one should match it, not the other way round.
 
-## Status: Phases 1–7 done. Phase 8 (hardening) done except deploying and Cashfree Live mode.
+## Status: deployed to Vercel. Phases 1–8 done; a full feature-parity re-audit found and fixed 6 gaps.
 
 Every customer-facing flow, the full admin panel, payments, email, chatbot, and PWA support are
 built and ported feature-for-feature from the original. **A real Supabase project exists**
-(`tixrybyedvarwsmgoqef`) with migrations 0001–0007 applied and verified against live data;
-migration 0008 (rate limiting) is written but not yet applied — see its own note below. `npm run
-build` / `npx tsc --noEmit` / `npx eslint` all pass clean, and the app has been smoke-tested
-end-to-end locally in both `next dev` and `next start` (production build) against the real
-database. Not yet deployed to Vercel — that's the only remaining step for a working site; Cashfree
-stays in `simulated` mode until the user has a live domain and real merchant credentials.
+(`tixrybyedvarwsmgoqef`) with migrations 0001–0008 applied and verified against live data;
+**migration 0009 (single-device session) is written but not yet applied** — see its own note
+below and in that file. `npm run build` / `npx tsc --noEmit` / `npx eslint` all pass clean. Live
+at `wood-online-service.vercel.app`.
+
+### Post-launch feature-parity audit (found 6 real gaps, all fixed)
+
+After the first deploy, a full line-by-line re-read of every controller/service in the original
+against its Next.js equivalent (not just a skim) turned up 6 genuine gaps — everything else
+checked matched. Fixed, in severity order:
+
+1. **Single-device session enforcement was completely missing.** The original stamped a fresh
+   `CurrentSessionId` onto the user record on every sign-in and rejected any cookie carrying an
+   older id on its very next request (`Program.cs`'s `OnValidatePrincipal`) — "signing in on your
+   phone signs you out on your laptop," plus an admin block force-logs-out other devices
+   immediately rather than waiting for their token to expire. Supabase Auth has no equivalent.
+   Re-implemented: `profiles.current_session_id` (migration `0009`), `lib/auth/session.ts`
+   (`completeSignIn` stamps it + revokes other Supabase sessions via
+   `admin.signOut(token, 'others')`; `invalidateAllSessions` for the block case), and
+   `src/proxy.ts` compares a `wos_session_id` cookie against it on every signed-in request,
+   rejecting to `/account/login?sessionExpired=1` on mismatch. **Deliberately fails open**: a
+   profile with no `current_session_id` yet (before migration 0009 is applied, or any DB error) is
+   treated as not-yet-enforced, never rejected — this can't mass-logout everyone the moment it
+   ships, and the whole feature is inert (but harmless) until that migration is applied.
+2. **Credential-stuffing IP block used the wrong duration for customer-form failures.** The
+   original's `SuspiciousActivityService.RecordFailedAttempt(ip)` takes no duration parameter —
+   it's always `AdminLockoutMinutes` (30 min), regardless of which form the failed attempts came
+   from. The port had accidentally parameterized it, so customer-form failures only blocked for 10
+   minutes. Fixed by hardcoding it again in `lib/auth/suspicious-activity.ts` — don't
+   re-parameterize this.
+3. **Header search and chatbot search didn't match category names.** Both the original's
+   `SearchApiController.Suggest` and `ChatbotService.SearchProductsAsync` match
+   `p.Category.Name.Contains(term)` alongside name/wood-type/description; the ports only checked
+   the product's own columns. Fixed in `app/api/search/suggest/route.ts` and
+   `lib/chatbot/service.ts` by resolving matching category ids first, then folding
+   `category_id.in.(...)` into the same `.or()` clause (PostgREST can't filter an embedded
+   resource directly in `.or()`).
+4. **Admin product/category forms had no field validation**, relying only on Postgres CHECK
+   constraints — data integrity was never actually at risk, but a typo (negative price, huge
+   description) produced a raw constraint-violation error instead of the original's friendly
+   inline "Price must be 0 or more". Added `productSchema`/`categorySchema` to
+   `lib/validation/schemas.ts` (ported from `ProductFormViewModel`/`CategoryFormViewModel`'s
+   DataAnnotations) and wired them into both the client-side form and the Server Action (client
+   check alone isn't a security boundary).
+5. **Visitor analytics never recorded `user_agent`/`referrer`** — the columns existed
+   (migration 0001) but `lib/data/visitor.ts#recordVisit` never populated them, even though
+   `VisitorService.cs` does (truncated to 300 chars, same as `landing_page`). Fixed; no admin UI
+   surfaces these in either app, so this was silent, unintentional data loss rather than a
+   user-visible bug.
+6. **Simulated-payment success email used placeholder values.** `applySimulatedOutcomeAction`
+   hardcoded the email's `payment_method`/`payment_id` and the order's persisted
+   `payment_reference` instead of reusing the real values generated a few lines earlier — the
+   original's `NotifyPaymentSuccessAsync` passes the real transaction through. Simulated-mode-only
+   (never hit with `CASHFREE_MODE=live`), fixed by reusing the actual generated values.
 
 ### Phase 1 — Foundation
 - Supabase schema (`supabase/migrations/0001_init_schema.sql`) — every table from `Models/*.cs`,
@@ -129,15 +177,17 @@ recur, but reconcile the seed/RLS-only knowledge (doc comments, the `Table`/`Vie
 
 ## Before going live (Phase 8)
 
-1. **Create the Supabase project** — done. Project `tixrybyedvarwsmgoqef`, migrations 0001–0007
-   applied and verified (categories/products/site_settings_public/storage buckets all confirmed
-   via direct REST calls against live data). **Migration `0008_rate_limits.sql` is written but
-   NOT YET applied** — paste it into the SQL Editor (it's additive, safe to run any time; nothing
-   else depends on it existing, since `lib/rate-limit.ts` fails open if the table is missing).
+1. **Create the Supabase project** — done. Project `tixrybyedvarwsmgoqef`, migrations 0001–0008
+   applied and verified (categories/products/site_settings_public/storage buckets/rate_limits all
+   confirmed via direct REST calls against live data). **Migration
+   `0009_single_device_session.sql` is written but NOT YET applied** — paste it into the SQL
+   Editor (it's additive, safe to run any time; nothing else depends on it existing, since
+   `src/proxy.ts`'s session check fails open — treats a missing/null `current_session_id` as
+   not-yet-enforced — if the column is missing).
 2. **Manually promote one account to admin** — nothing in the app can do this (by design, so no
-   API path can self-elevate). After registering normally, run in the SQL editor:
-   `update public.profiles set role = 'admin' where id = '<the auth.users.id>';` **Still pending**
-   — no admin account has been promoted yet on the live project.
+   API path can self-elevate). Done: `gauravkum1275@gmail.com` promoted via
+   `update public.profiles set role = 'admin' where id = '4b70f059-060e-4e1f-b99d-d5aceed27975';`
+   — sign in at `/admin/login`, not the customer `/account/login`.
 3. **First real end-to-end run** — done locally (`next dev` and `next start` against the real
    database): homepage/shop/product pages/cart/account pages all verified 200 with real data.
    Register → checkout → admin dashboard flow still needs a manual click-through once an admin

@@ -150,3 +150,32 @@ export const cartAddSchema = z.object({
   quantity: z.number().int().min(1).max(50).default(1),
 });
 export type CartAddInput = z.infer<typeof cartAddSchema>;
+
+// Ported from Areas/Admin/ViewModels/AdminViewModels.cs's ProductFormViewModel/
+// CategoryFormViewModel DataAnnotations. Postgres carries matching CHECK constraints
+// (migration 0001) so bad data can never actually land in the table either way, but without
+// these an admin who mistypes a price/description gets a raw constraint-violation error instead
+// of the original's friendly inline "Price must be 0 or more" — this is what produces that
+// message client-side, before the request is even sent.
+export const productSchema = z.object({
+  name: z.string().trim().min(1, "Product name is required").max(200),
+  categoryId: z.number().int().positive("Please choose a category"),
+  woodType: z.string().trim().max(100).optional().or(z.literal("")),
+  description: z.string().trim().max(2000).optional().or(z.literal("")),
+  price: z.number().min(0, "Price must be 0 or more").max(10000000),
+  oldPrice: z.number().min(0).max(10000000).nullable().optional(),
+  dimensions: z.string().trim().max(150).optional().or(z.literal("")),
+  stockQuantity: z.number().int().min(0, "Stock must be 0 or more").max(100000),
+  isAvailable: z.boolean().optional(),
+  isFeatured: z.boolean().optional(),
+  isCustomOrder: z.boolean().optional(),
+});
+export type ProductInput = z.infer<typeof productSchema>;
+
+export const categorySchema = z.object({
+  name: z.string().trim().min(1, "Category name is required").max(100),
+  description: z.string().trim().max(500).optional().or(z.literal("")),
+  displayOrder: z.number().int().optional(),
+  isActive: z.boolean().optional(),
+});
+export type CategoryInput = z.infer<typeof categorySchema>;

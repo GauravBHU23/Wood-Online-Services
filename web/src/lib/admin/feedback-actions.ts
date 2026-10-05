@@ -2,10 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { respondToFeedback, deleteAdminFeedback } from "@/lib/data/admin-feedback";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import type { ActionResult } from "@/lib/auth/types";
 
 // Ported from Areas/Admin/Controllers/FeedbackController.cs.
 export async function respondToFeedbackAction(id: number, adminResponse?: string): Promise<ActionResult> {
+  await requireAdmin();
+
   const ok = await respondToFeedback(id, adminResponse);
   if (!ok) return { success: false, message: "Feedback not found." };
 
@@ -14,6 +17,8 @@ export async function respondToFeedbackAction(id: number, adminResponse?: string
 }
 
 export async function deleteFeedbackAction(id: number): Promise<ActionResult> {
+  await requireAdmin();
+
   const ok = await deleteAdminFeedback(id);
   if (!ok) return { success: false, message: "Feedback not found." };
 

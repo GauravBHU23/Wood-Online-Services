@@ -389,26 +389,47 @@ a:hover { color: var(--wood-500); text-decoration: underline; }
 }
 .input-group input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 
-/* --- Product detail ----------------------------------------------------- */
-.gallery-main {
+/* --- Product detail -----------------------------------------------------
+   Same "room scene" SVGs as the catalogue cards (see .product-thumb-wrap's comment above) — the
+   furniture typically fills only ~30-50% of the canvas width, so without a zoom the big hero
+   image on the detail page reads as mostly empty wall/floor around a small item. The wrapper
+   clips the scaled-up image back down to its own box, same pattern as the card thumbnails. */
+.gallery-main-wrap {
   width: 100%;
   aspect-ratio: 4 / 3;
-  object-fit: cover;
+  overflow: hidden;
   border-radius: var(--radius);
   border: 1px solid var(--line);
   background: var(--wood-50);
 }
-.gallery-thumb {
-  width: 72px; height: 60px;
+.gallery-main {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+  display: block;
+  transform: scale(1.6);
+  transform-origin: center;
+}
+.gallery-thumb-wrap {
+  width: 72px; height: 60px;
+  overflow: hidden;
   border-radius: var(--radius-sm);
   border: 2px solid transparent;
-  cursor: pointer;
   background: var(--wood-50);
 }
-.gallery-thumb.active, .gallery-thumb:hover { border-color: var(--wood-500); }
+.gallery-thumb-btn:hover .gallery-thumb-wrap,
+.gallery-thumb-wrap.active { border-color: var(--wood-500); }
+.gallery-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform: scale(1.6);
+  transform-origin: center;
+}
 
 .gallery-main-btn {
+  position: relative;
   display: block;
   width: 100%;
   padding: 0;
@@ -417,6 +438,22 @@ a:hover { color: var(--wood-500); text-decoration: underline; }
   cursor: zoom-in;
 }
 .gallery-thumb-btn { padding: 0; border: none; background: none; display: block; }
+
+/* A visible cue that the photo can be enlarged — cursor:zoom-in alone is invisible on
+   touchscreens, which is most of this audience, so the main shopping decision (can I see this
+   piece of furniture clearly?) had no visible affordance at all. */
+.gallery-zoom-hint {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  background: rgba(63, 40, 23, .82);
+  color: #fff;
+  font-size: .78rem;
+  font-weight: 600;
+  padding: .35rem .7rem;
+  border-radius: 999px;
+  pointer-events: none;
+}
 
 .gallery-lightbox {
   position: fixed;
@@ -795,6 +832,24 @@ main .panel .btn:hover { transform: translateY(-1px); }
 
 @media (prefers-reduced-motion: reduce) {
   .hero-anim-1, .hero-anim-2, .hero-anim-3 { opacity: 1; animation: none; }
+}
+
+/* --- How to Order ------------------------------------------------------
+   A plain-language "how this works" strip for a visitor who doesn't shop online often — the
+   rest of the homepage assumes e-commerce familiarity (browse → cart → checkout) that isn't
+   universal for this audience. */
+.how-it-works-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--wood-700);
+  color: #fff;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto .5rem;
+  font-family: var(--font-display);
 }
 
 /* --- Stats strip ------------------------------------------------------ */

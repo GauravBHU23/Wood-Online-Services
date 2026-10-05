@@ -41,8 +41,11 @@ export default async function CheckoutSuccessPage({
                   {order.order_number}
                 </div>
               </div>
-              <p className="small text-muted-wood mb-0">
+              <p className="small text-muted-wood mb-1">
                 We will call you shortly on <strong>{order.shipping_phone}</strong> to confirm your order.
+              </p>
+              <p className="small text-muted-wood mb-0">
+                A confirmation has also been sent to your email.
               </p>
             </div>
           </div>

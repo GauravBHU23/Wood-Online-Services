@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { updateSiteSettingsGeneral } from "@/lib/data/site-settings";
 import { siteSettingsGeneralSchema, type SiteSettingsGeneralInput } from "@/lib/validation/schemas";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import type { ActionResult } from "@/lib/auth/types";
 
 // New admin feature — the original had no runtime settings UI at all (SiteSettings.cs is
@@ -10,6 +11,8 @@ import type { ActionResult } from "@/lib/auth/types";
 // site_settings has exactly one row (seeded in migration 0001); this always updates that row.
 
 export async function updateSiteSettingsAction(form: SiteSettingsGeneralInput): Promise<ActionResult> {
+  await requireAdmin();
+
   const parsed = siteSettingsGeneralSchema.safeParse(form);
   if (!parsed.success) {
     return {

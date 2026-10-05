@@ -42,7 +42,7 @@ export async function Footer() {
                 <Link href="/contact">Contact</Link>
               </li>
               <li>
-                <Link href="/orders">Track Order</Link>
+                <Link href="/orders">My Orders</Link>
               </li>
             </ul>
           </div>

@@ -74,19 +74,36 @@ export function CartTable({ lines }: { lines: CartLine[] }) {
               <td className="text-end">₹{Math.round(line.product.price).toLocaleString("en-IN")}</td>
               <td>
                 <div className="d-flex justify-content-center align-items-center gap-2">
-                  <input
-                    type="number"
-                    defaultValue={line.quantity}
-                    min={1}
-                    max={line.product.stock_quantity}
-                    className="form-control form-control-sm text-center"
-                    style={{ width: 70 }}
-                    disabled={rowBusy}
-                    onBlur={(e) => {
-                      const q = Number(e.target.value);
-                      if (Number.isFinite(q) && q !== line.quantity) handleQuantityChange(line.product.id, q);
-                    }}
-                  />
+                  <div className="input-group input-group-sm" style={{ width: 120 }}>
+                    <button
+                      className="btn btn-outline-wood"
+                      type="button"
+                      disabled={rowBusy || line.quantity <= 1}
+                      aria-label={`Decrease quantity of ${line.product.name}`}
+                      onClick={() => handleQuantityChange(line.product.id, line.quantity - 1)}
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      value={line.quantity}
+                      min={1}
+                      max={line.product.stock_quantity}
+                      className="form-control text-center"
+                      aria-label={`Quantity of ${line.product.name}`}
+                      disabled={rowBusy}
+                      readOnly
+                    />
+                    <button
+                      className="btn btn-outline-wood"
+                      type="button"
+                      disabled={rowBusy || line.quantity >= line.product.stock_quantity}
+                      aria-label={`Increase quantity of ${line.product.name}`}
+                      onClick={() => handleQuantityChange(line.product.id, line.quantity + 1)}
+                    >
+                      +
+                    </button>
+                  </div>
                   {rowBusy && <span className="wos-btn-spinner" aria-hidden="true" />}
                 </div>
               </td>

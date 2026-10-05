@@ -77,6 +77,46 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section className="py-5">
+        <div className="container">
+          <h2 className="section-title text-center">How to Order</h2>
+          <div className="row g-4 text-center">
+            <div className="col-6 col-md-3">
+              <div className="how-it-works-step">
+                <div className="how-it-works-number">1</div>
+                <div className="fs-2 mb-1">🛋️</div>
+                <div className="fw-bold text-wood">Browse Products</div>
+                <div className="small text-muted-wood">Pick what you like</div>
+              </div>
+            </div>
+            <div className="col-6 col-md-3">
+              <div className="how-it-works-step">
+                <div className="how-it-works-number">2</div>
+                <div className="fs-2 mb-1">🛒</div>
+                <div className="fw-bold text-wood">Add to Cart &amp; Order</div>
+                <div className="small text-muted-wood">Enter your address, pay online or on delivery</div>
+              </div>
+            </div>
+            <div className="col-6 col-md-3">
+              <div className="how-it-works-step">
+                <div className="how-it-works-number">3</div>
+                <div className="fs-2 mb-1">📞</div>
+                <div className="fw-bold text-wood">We Call to Confirm</div>
+                <div className="small text-muted-wood">We&apos;ll confirm your order on phone</div>
+              </div>
+            </div>
+            <div className="col-6 col-md-3">
+              <div className="how-it-works-step">
+                <div className="how-it-works-number">4</div>
+                <div className="fs-2 mb-1">🚚</div>
+                <div className="fw-bold text-wood">Delivered Home</div>
+                <div className="small text-muted-wood">Right to your doorstep</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {(stats.productCount > 0 || stats.customersServed > 0) && (
         <section className="stats-strip py-4">
           <div className="container">

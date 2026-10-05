@@ -27,11 +27,16 @@ export function ProductGallery({ images, alt }: { images: string[]; alt: string 
     <>
       <button
         type="button"
-        className="gallery-main-btn"
+        className="gallery-main-btn mb-3"
         onClick={() => setLightboxOpen(true)}
         aria-label={`View larger image of ${alt}`}
       >
-        <img id="mainImage" src={active} alt={alt} className="gallery-main mb-3" width={600} height={450} />
+        <div className="gallery-main-wrap">
+          <img id="mainImage" src={active} alt={alt} className="gallery-main" width={600} height={450} />
+        </div>
+        <span className="gallery-zoom-hint" aria-hidden="true">
+          🔍 Tap to zoom
+        </span>
       </button>
 
       {images.length > 1 && (
@@ -45,7 +50,9 @@ export function ProductGallery({ images, alt }: { images: string[]; alt: string 
               aria-label={`Show ${alt} view ${i + 1}`}
               aria-pressed={i === activeIndex}
             >
-              <img src={src} alt={`${alt} view ${i + 1}`} className={`gallery-thumb${i === activeIndex ? " active" : ""}`} loading="lazy" />
+              <div className={`gallery-thumb-wrap${i === activeIndex ? " active" : ""}`}>
+                <img src={src} alt={`${alt} view ${i + 1}`} className="gallery-thumb" loading="lazy" />
+              </div>
             </button>
           ))}
         </div>

@@ -13,6 +13,7 @@ import {
 } from "@/lib/data/admin-products";
 import { saveImage, deleteImage, ImageValidationError, isSeedImage } from "@/lib/admin/image-service";
 import { productSchema } from "@/lib/validation/schemas";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import type { ActionResult } from "@/lib/auth/types";
 
 // Ported from Areas/Admin/Controllers/ProductsController.cs.
@@ -32,6 +33,8 @@ export async function createProductAction(
   mainImage: File | null,
   galleryImages: File[]
 ): Promise<ActionResult & { productId?: number }> {
+  await requireAdmin();
+
   const fieldErrors = validateProductForm(form);
   if (fieldErrors) {
     return { success: false, message: "Please fix the errors below.", fieldErrors };
@@ -72,6 +75,8 @@ export async function updateProductAction(
   mainImage: File | null,
   galleryImages: File[]
 ): Promise<ActionResult> {
+  await requireAdmin();
+
   const fieldErrors = validateProductForm(form);
   if (fieldErrors) {
     return { success: false, message: "Please fix the errors below.", fieldErrors };
@@ -117,6 +122,8 @@ export async function updateProductAction(
 }
 
 export async function deleteProductImageAction(imageId: number): Promise<ActionResult & { productId?: number }> {
+  await requireAdmin();
+
   const admin = await import("@/lib/supabase/admin").then((m) => m.createAdminClient());
   const result = await admin.from("product_images").select("product_id, image_path").eq("id", imageId).maybeSingle();
   const row = result.data as { product_id: number; image_path: string } | null;
@@ -130,6 +137,8 @@ export async function deleteProductImageAction(imageId: number): Promise<ActionR
 }
 
 export async function toggleProductFeaturedAction(id: number): Promise<ActionResult> {
+  await requireAdmin();
+
   const result = await toggleProductFeatured(id);
   if (!result) return { success: false, message: "Product not found." };
 
@@ -142,6 +151,8 @@ export async function toggleProductFeaturedAction(id: number): Promise<ActionRes
 }
 
 export async function deleteProductAction(id: number): Promise<ActionResult> {
+  await requireAdmin();
+
   const existing = await getAdminProductById(id);
   if (!existing) return { success: false, message: "Product not found." };
 

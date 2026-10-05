@@ -10,6 +10,7 @@ import {
 } from "@/lib/data/admin-categories";
 import { saveImage, deleteImage, ImageValidationError, isSeedImage } from "@/lib/admin/image-service";
 import { categorySchema } from "@/lib/validation/schemas";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import type { ActionResult } from "@/lib/auth/types";
 
 // Ported from Areas/Admin/Controllers/CategoriesController.cs.
@@ -23,6 +24,8 @@ function validateCategoryForm(form: CategoryFormData): Record<string, string[]> 
 }
 
 export async function createCategoryAction(form: CategoryFormData, image: File | null): Promise<ActionResult> {
+  await requireAdmin();
+
   const fieldErrors = validateCategoryForm(form);
   if (fieldErrors) {
     return { success: false, message: "Please fix the errors below.", fieldErrors };
@@ -47,6 +50,8 @@ export async function createCategoryAction(form: CategoryFormData, image: File |
 }
 
 export async function updateCategoryAction(id: number, form: CategoryFormData, image: File | null): Promise<ActionResult> {
+  await requireAdmin();
+
   const fieldErrors = validateCategoryForm(form);
   if (fieldErrors) {
     return { success: false, message: "Please fix the errors below.", fieldErrors };
@@ -78,6 +83,8 @@ export async function updateCategoryAction(id: number, form: CategoryFormData, i
 }
 
 export async function deleteCategoryAction(id: number): Promise<ActionResult> {
+  await requireAdmin();
+
   const category = await getAdminCategoryById(id);
   const result = await deleteAdminCategory(id);
 

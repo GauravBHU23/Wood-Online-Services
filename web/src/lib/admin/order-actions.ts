@@ -4,11 +4,14 @@ import { revalidatePath } from "next/cache";
 import { updateAdminOrderStatus, type UpdateOrderStatusInput } from "@/lib/data/admin-orders";
 import { getSiteSettingsPublic, toEmailConfig } from "@/lib/data/site-settings";
 import { notifyOrderStatus } from "@/lib/email/service";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import type { ActionResult } from "@/lib/auth/types";
 import type { OrderStatusForEmail } from "@/lib/email/templates";
 
 // Ported from Areas/Admin/Controllers/OrdersController.cs#UpdateStatus.
 export async function updateOrderStatusAction(id: number, input: UpdateOrderStatusInput): Promise<ActionResult> {
+  await requireAdmin();
+
   const result = await updateAdminOrderStatus(id, input);
   if (!result) return { success: false, message: "Order not found." };
 

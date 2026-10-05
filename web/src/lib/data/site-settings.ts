@@ -128,6 +128,8 @@ export function toEmailConfig(site: SiteSettingsPublic, siteBaseUrl: string): Si
     phone: site.phone,
     email: site.email,
     workingHours: site.working_hours,
+    addressLine1: site.address_line1,
+    addressLine2: site.address_line2,
     siteBaseUrl,
   };
 }

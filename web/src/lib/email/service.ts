@@ -79,13 +79,16 @@ export interface SiteEmailConfig {
   phone: string;
   email: string;
   workingHours: string;
+  addressLine1: string;
+  addressLine2: string;
   siteBaseUrl: string;
 }
 
 function supportFooter(site: SiteEmailConfig): string {
+  const address = [site.addressLine1, site.addressLine2].filter(Boolean).join(", ");
   return `Need help? Call <a href="tel:${site.phone}" style="color:#6d4423;">${site.phone}</a>
 or email <a href="mailto:${site.email}" style="color:#6d4423;">${site.email}</a>.<br>
-${site.workingHours}`;
+${site.workingHours}${address ? `<br>${address}` : ""}`;
 }
 
 export interface InquiryEmailData {

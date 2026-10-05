@@ -94,8 +94,9 @@ export function CartTable({ lines }: { lines: CartLine[] }) {
               <td className="text-end">
                 <button
                   type="button"
-                  className={`btn btn-sm btn-outline-danger${rowBusy ? " is-busy" : ""}`}
+                  className={`btn btn-icon-sm btn-outline-danger${rowBusy ? " is-busy" : ""}`}
                   title="Remove"
+                  aria-label={`Remove ${line.product.name} from cart`}
                   disabled={rowBusy}
                   onClick={() => handleRemove(line.product.id)}
                 >

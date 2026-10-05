@@ -1,18 +1,25 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getCategoriesWithCounts, getFeaturedProducts, getLatestProducts } from "@/lib/data/products";
+import { getCategoriesWithCounts, getFeaturedProducts, getHomeStats, getLatestProducts } from "@/lib/data/products";
 import { getSiteSettingsPublic } from "@/lib/data/site-settings";
+import { getTopTestimonials } from "@/lib/data/reviews";
 import { ProductCard } from "@/components/shop/product-card";
+import { TestimonialCard } from "@/components/shop/testimonial-card";
+import { Reveal } from "@/components/ui/reveal";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 export const metadata: Metadata = { title: "Home" };
 
-// Ported from Controllers/HomeController.cs#Index + Views/Home/Index.cshtml.
+// Ported from Controllers/HomeController.cs#Index + Views/Home/Index.cshtml, plus a stats strip,
+// testimonials and scroll-reveal added on top of the original layout.
 export default async function HomePage() {
-  const [site, categories, featured, latest] = await Promise.all([
+  const [site, categories, featured, latest, stats, testimonials] = await Promise.all([
     getSiteSettingsPublic(),
     getCategoriesWithCounts(),
     getFeaturedProducts(8),
     getLatestProducts(4),
+    getHomeStats(),
+    getTopTestimonials(6),
   ]);
 
   return (
@@ -21,15 +28,15 @@ export default async function HomePage() {
         <div className="container py-5">
           <div className="row">
             <div className="col-lg-7">
-              <span className="badge badge-soft mb-3" style={{ fontSize: ".8rem" }}>
+              <span className="badge badge-soft mb-3 hero-anim-1" style={{ fontSize: ".8rem" }}>
                 Solid Wood · Handcrafted
               </span>
-              <h1 className="mb-3">Strong wooden furniture for your home</h1>
-              <p className="lead mb-4">
+              <h1 className="mb-3 hero-anim-2">Strong wooden furniture for your home</h1>
+              <p className="lead mb-4 hero-anim-2">
                 Handmade furniture in seasoned Sheesham, Teak and Mango wood. From dining to bedroom, storage and
                 custom work, all in one place.
               </p>
-              <div className="d-flex flex-wrap gap-2">
+              <div className="d-flex flex-wrap gap-2 hero-anim-3">
                 <Link href="/shop" className="btn btn-wood btn-lg">
                   Browse Products
                 </Link>
@@ -69,11 +76,50 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {(stats.productCount > 0 || stats.customersServed > 0) && (
+        <section className="stats-strip py-4">
+          <div className="container">
+            <div className="row g-3">
+              <div className="col-6 col-md-3">
+                <div className="stat-item">
+                  <div className="stat-value">
+                    <AnimatedCounter value={stats.productCount} suffix="+" />
+                  </div>
+                  <div className="stat-label">Products</div>
+                </div>
+              </div>
+              <div className="col-6 col-md-3">
+                <div className="stat-item">
+                  <div className="stat-value">
+                    <AnimatedCounter value={stats.customersServed} suffix="+" />
+                  </div>
+                  <div className="stat-label">Orders Delivered</div>
+                </div>
+              </div>
+              <div className="col-6 col-md-3">
+                <div className="stat-item">
+                  <div className="stat-value">{stats.averageRating > 0 ? stats.averageRating.toFixed(1) : "—"}★</div>
+                  <div className="stat-label">Average Rating</div>
+                </div>
+              </div>
+              <div className="col-6 col-md-3">
+                <div className="stat-item">
+                  <div className="stat-value">
+                    <AnimatedCounter value={stats.reviewCount} suffix="+" />
+                  </div>
+                  <div className="stat-label">Happy Reviews</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {categories.length > 0 && (
         <section className="py-5">
           <div className="container">
             <h2 className="section-title text-center">Categories</h2>
-            <div className="row g-3 g-md-4">
+            <Reveal group className="row g-3 g-md-4">
               {categories.map((cat) => (
                 <div key={cat.id} className="col-6 col-md-4 col-lg-2">
                   <Link href={`/shop?categoryId=${cat.id}`} className="cat-tile">
@@ -83,7 +129,7 @@ export default async function HomePage() {
                   </Link>
                 </div>
               ))}
-            </div>
+            </Reveal>
           </div>
         </section>
       )}
@@ -97,13 +143,13 @@ export default async function HomePage() {
                 View all →
               </Link>
             </div>
-            <div className="row g-3 g-md-4">
+            <Reveal group className="row g-3 g-md-4">
               {featured.map((p) => (
                 <div key={p.id} className="col-6 col-md-4 col-lg-3">
                   <ProductCard product={p} />
                 </div>
               ))}
-            </div>
+            </Reveal>
           </div>
         </section>
       )}
@@ -111,10 +157,10 @@ export default async function HomePage() {
       <section className="py-5">
         <div className="container">
           <div className="row align-items-center g-4">
-            <div className="col-lg-6">
+            <Reveal className="col-lg-6">
               <img src="/img/workshop.svg" alt="Our workshop" className="img-fluid rounded" style={{ border: "1px solid var(--line)" }} loading="lazy" />
-            </div>
-            <div className="col-lg-6">
+            </Reveal>
+            <Reveal className="col-lg-6">
               <h2 className="section-title">Our Craft</h2>
               <p>
                 We have worked with wood for generations. Every table, chair and wardrobe is made by hand in our
@@ -133,7 +179,7 @@ export default async function HomePage() {
               <Link href="/about" className="btn btn-outline-wood">
                 Learn More
               </Link>
-            </div>
+            </Reveal>
           </div>
         </div>
       </section>
@@ -142,18 +188,33 @@ export default async function HomePage() {
         <section className="py-5 bg-wood-50">
           <div className="container">
             <h2 className="section-title">New Arrivals</h2>
-            <div className="row g-3 g-md-4">
+            <Reveal group className="row g-3 g-md-4">
               {latest.map((p) => (
                 <div key={p.id} className="col-6 col-md-4 col-lg-3">
                   <ProductCard product={p} />
                 </div>
               ))}
-            </div>
+            </Reveal>
           </div>
         </section>
       )}
 
-      <section className="py-5">
+      {testimonials.length > 0 && (
+        <section className="py-5">
+          <div className="container">
+            <h2 className="section-title text-center">What Our Customers Say</h2>
+            <Reveal group className="row g-3 g-md-4">
+              {testimonials.map((review) => (
+                <div key={review.id} className="col-md-6 col-lg-4">
+                  <TestimonialCard review={review} />
+                </div>
+              ))}
+            </Reveal>
+          </div>
+        </section>
+      )}
+
+      <section className="py-5 bg-wood-50">
         <div className="container">
           <div className="panel">
             <div className="panel-body text-center py-5">

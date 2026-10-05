@@ -68,12 +68,33 @@ export interface GeoResult {
   countryCode: string | null;
 }
 
-/** Exported so lib/auth/login-notification.ts can reuse the same lookup for the sign-in security email. */
+/**
+ * Exported so lib/auth/login-notification.ts can reuse the same lookup for the sign-in security email.
+ *
+ * Checks Vercel's own edge-resolved geo headers first (no network round-trip, and not subject to
+ * ip-api.com's rate limits), falling back to ip-api.com when those headers aren't present (local dev,
+ * or a Vercel plan that doesn't receive them). Either source can occasionally be wrong for an IP behind
+ * a VPN/mobile-carrier NAT pool — that's a limitation of IP geolocation itself, not of either provider.
+ */
 export async function getGeoLocation(ip: string, enabled: boolean): Promise<GeoResult | null> {
   if (!enabled || isPrivateAddress(ip)) return null;
 
   const cached = GEO_CACHE.get(ip);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+  const h = await headers();
+  const vercelCountry = h.get("x-vercel-ip-country");
+  const vercelCity = h.get("x-vercel-ip-city");
+  if (vercelCountry) {
+    const result: GeoResult = {
+      city: vercelCity ? decodeURIComponent(vercelCity) : null,
+      region: h.get("x-vercel-ip-country-region"),
+      country: vercelCountry,
+      countryCode: vercelCountry,
+    };
+    GEO_CACHE.set(ip, { value: result, expiresAt: Date.now() + 12 * 60 * 60 * 1000 });
+    return result;
+  }
 
   try {
     const controller = new AbortController();

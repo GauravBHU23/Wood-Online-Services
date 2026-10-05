@@ -74,7 +74,8 @@ export function ProfileForm({ initial }: { initial: ProfileInput & { email: stri
                         id="phoneNumber"
                         type="tel"
                         className={inputClass}
-                        maxLength={20}
+                        maxLength={10}
+                        placeholder="10-digit mobile number"
                         value={values.phoneNumber}
                         onChange={(e) => setValues((v) => ({ ...v, phoneNumber: e.target.value }))}
                       />

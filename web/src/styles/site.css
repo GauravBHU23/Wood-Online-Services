@@ -85,6 +85,17 @@ a:hover { color: var(--wood-500); text-decoration: underline; }
 /* --- Buttons ------------------------------------------------------------ */
 .btn { border-radius: var(--radius-sm); font-weight: 600; padding: .55rem 1.25rem; }
 
+/* Icon-only buttons (a single glyph, no label) need a minimum ~44px hit target on touch devices
+   even when they sit in a dense table row — Bootstrap's .btn-sm padding alone isn't enough. */
+.btn-icon-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+}
+
 .btn-wood {
   background: linear-gradient(180deg, var(--wood-500), var(--wood-700));
   border: 1px solid var(--wood-800);
@@ -344,6 +355,49 @@ a:hover { color: var(--wood-500); text-decoration: underline; }
   background: var(--wood-50);
 }
 .gallery-thumb.active, .gallery-thumb:hover { border-color: var(--wood-500); }
+
+.gallery-main-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
+}
+.gallery-thumb-btn { padding: 0; border: none; background: none; display: block; }
+
+.gallery-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1060;
+  background: rgba(20, 13, 8, .92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  cursor: zoom-out;
+}
+.gallery-lightbox-img {
+  max-width: min(92vw, 1100px);
+  max-height: 88vh;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  cursor: default;
+}
+.gallery-lightbox-close {
+  position: absolute;
+  top: 1rem; right: 1.25rem;
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, .12);
+  color: #fff;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.gallery-lightbox-close:hover { background: rgba(255, 255, 255, .22); }
 
 .spec-table th {
   width: 40%;
@@ -673,3 +727,87 @@ main .panel .btn:hover { transform: translateY(-1px); }
 @media (prefers-reduced-motion: reduce) {
   .js-reveal { opacity: 1; transform: none; transition: none; }
 }
+
+/* --- Hero entrance -------------------------------------------------------- */
+@keyframes hero-fade-up {
+  from { opacity: 0; transform: translateY(22px); }
+  to { opacity: 1; transform: none; }
+}
+.hero-anim-1, .hero-anim-2, .hero-anim-3 {
+  opacity: 0;
+  animation: hero-fade-up .7s ease forwards;
+}
+.hero-anim-1 { animation-delay: .05s; }
+.hero-anim-2 { animation-delay: .18s; }
+.hero-anim-3 { animation-delay: .32s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-anim-1, .hero-anim-2, .hero-anim-3 { opacity: 1; animation: none; }
+}
+
+/* --- Stats strip ------------------------------------------------------ */
+.stats-strip {
+  background: linear-gradient(135deg, var(--wood-900) 0%, var(--wood-800) 55%, var(--wood-700) 100%);
+  color: #fff;
+}
+.stat-item { text-align: center; padding: .5rem; }
+.stat-value {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.1;
+}
+.stat-label {
+  font-size: .82rem;
+  color: var(--wood-200);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-top: .25rem;
+}
+
+/* --- Testimonials ------------------------------------------------------ */
+.testimonial-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.testimonial-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+.testimonial-comment {
+  font-style: italic;
+  color: var(--ink);
+  margin: .85rem 0;
+  flex-grow: 1;
+}
+.testimonial-footer { display: flex; align-items: center; gap: .65rem; margin-top: auto; }
+.testimonial-avatar {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: var(--wood-100);
+  color: var(--wood-800);
+  font-family: var(--font-display);
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.testimonial-name { font-weight: 600; font-size: .92rem; color: var(--wood-900); }
+.testimonial-verified {
+  display: inline-block;
+  margin-left: .45rem;
+  font-size: .68rem;
+  font-weight: 600;
+  color: var(--success);
+  background: rgba(47, 125, 79, .1);
+  border-radius: 999px;
+  padding: .1rem .5rem;
+  vertical-align: middle;
+}
+.testimonial-product { font-size: .78rem; color: var(--ink-soft); }
+
+/* --- Category tile icon lift -------------------------------------------- */
+.cat-tile img { transition: transform .22s ease; }
+.cat-tile:hover img { transform: scale(1.08) rotate(-2deg); }

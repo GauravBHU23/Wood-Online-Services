@@ -49,7 +49,12 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   const totalPages = Math.max(1, Math.ceil(result.totalCount / PAGE_SIZE));
 
   const hasActiveFilters =
-    !!filters.categoryId || !!filters.search || !!filters.woodType || filters.minPrice !== undefined || filters.maxPrice !== undefined;
+    !!filters.categoryId ||
+    !!filters.search ||
+    !!filters.woodType ||
+    filters.minPrice !== undefined ||
+    filters.maxPrice !== undefined ||
+    filters.minRating !== undefined;
 
   // Builds a query string carrying every filter except the ones explicitly overridden — used
   // for pagination and sort links so they preserve the rest of the current filter state.
@@ -61,6 +66,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       woodType: filters.woodType,
       minPrice: filters.minPrice,
       maxPrice: filters.maxPrice,
+      minRating: filters.minRating,
       sort: filters.sort,
       page: filters.page,
       ...overrides,
@@ -178,6 +184,27 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
                 </div>
               </div>
 
+              <div className="panel mb-3">
+                <div className="panel-header">Minimum Rating</div>
+                <div className="panel-body">
+                  <div className="d-grid gap-1">
+                    <Link href={buildQuery({ minRating: undefined, page: undefined })} className={`btn btn-sm text-start ${filters.minRating === undefined ? "btn-wood" : "btn-outline-wood"}`}>
+                      Any rating
+                    </Link>
+                    {[4, 3, 2, 1].map((stars) => (
+                      <Link
+                        key={stars}
+                        href={buildQuery({ minRating: stars, page: undefined })}
+                        className={`btn btn-sm text-start ${filters.minRating === stars ? "btn-wood" : "btn-outline-wood"}`}
+                      >
+                        {"★".repeat(stars)}
+                        {"☆".repeat(5 - stars)} &amp; up
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               {hasActiveFilters && (
                 <Link href="/shop" className="btn btn-outline-secondary btn-sm w-100">
                   Clear Filters
@@ -185,6 +212,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
               )}
 
               <input type="hidden" name="categoryId" value={filters.categoryId ?? ""} />
+              <input type="hidden" name="minRating" value={filters.minRating ?? ""} />
               <input type="hidden" name="sort" value={filters.sort} />
             </form>
           </aside>
@@ -205,6 +233,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
                 <input type="hidden" name="woodType" value={filters.woodType ?? ""} />
                 <input type="hidden" name="minPrice" value={filters.minPrice ?? ""} />
                 <input type="hidden" name="maxPrice" value={filters.maxPrice ?? ""} />
+                <input type="hidden" name="minRating" value={filters.minRating ?? ""} />
                 <label className="form-label mb-0 small">Sort:</label>
                 <select name="sort" className="form-select form-select-sm" style={{ width: "auto" }} defaultValue={filters.sort}>
                   <option value="newest">Newest first</option>

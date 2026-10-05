@@ -29,6 +29,18 @@ export function CheckoutForm({
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Validates just the one field the customer finished typing, so a typo in the phone number
+  // or PIN code surfaces immediately instead of only after "Place Order" is clicked.
+  function handleBlur(field: keyof CheckoutInput) {
+    const result = checkoutSchema.safeParse(values);
+    if (result.success) {
+      setErrors((prev) => (prev[field] ? { ...prev, [field]: [] } : prev));
+      return;
+    }
+    const fieldErrors = result.error.flatten().fieldErrors as Record<string, string[]>;
+    setErrors((prev) => ({ ...prev, [field]: fieldErrors[field] ?? [] }));
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
@@ -88,6 +100,7 @@ export function CheckoutForm({
                         autoComplete="name"
                         value={values.shippingName}
                         onChange={(e) => setValues((v) => ({ ...v, shippingName: e.target.value }))}
+                        onBlur={() => handleBlur("shippingName")}
                       />
                       {errors.shippingName?.[0] && <span className="field-error d-block">{errors.shippingName[0]}</span>}
                     </div>
@@ -100,8 +113,10 @@ export function CheckoutForm({
                         className="form-control"
                         type="tel"
                         autoComplete="tel"
+                        placeholder="10-digit mobile number"
                         value={values.shippingPhone}
                         onChange={(e) => setValues((v) => ({ ...v, shippingPhone: e.target.value }))}
+                        onBlur={() => handleBlur("shippingPhone")}
                       />
                       {errors.shippingPhone?.[0] && <span className="field-error d-block">{errors.shippingPhone[0]}</span>}
                     </div>
@@ -116,6 +131,7 @@ export function CheckoutForm({
                         placeholder="House or flat number, street, area, landmark"
                         value={values.shippingAddress}
                         onChange={(e) => setValues((v) => ({ ...v, shippingAddress: e.target.value }))}
+                        onBlur={() => handleBlur("shippingAddress")}
                       />
                       {errors.shippingAddress?.[0] && <span className="field-error d-block">{errors.shippingAddress[0]}</span>}
                     </div>
@@ -129,6 +145,7 @@ export function CheckoutForm({
                         autoComplete="address-level2"
                         value={values.shippingCity}
                         onChange={(e) => setValues((v) => ({ ...v, shippingCity: e.target.value }))}
+                        onBlur={() => handleBlur("shippingCity")}
                       />
                       {errors.shippingCity?.[0] && <span className="field-error d-block">{errors.shippingCity[0]}</span>}
                     </div>
@@ -142,6 +159,7 @@ export function CheckoutForm({
                         autoComplete="address-level1"
                         value={values.shippingState}
                         onChange={(e) => setValues((v) => ({ ...v, shippingState: e.target.value }))}
+                        onBlur={() => handleBlur("shippingState")}
                       />
                       {errors.shippingState?.[0] && <span className="field-error d-block">{errors.shippingState[0]}</span>}
                     </div>
@@ -157,6 +175,7 @@ export function CheckoutForm({
                         autoComplete="postal-code"
                         value={values.shippingPinCode}
                         onChange={(e) => setValues((v) => ({ ...v, shippingPinCode: e.target.value }))}
+                        onBlur={() => handleBlur("shippingPinCode")}
                       />
                       {errors.shippingPinCode?.[0] && <span className="field-error d-block">{errors.shippingPinCode[0]}</span>}
                     </div>
@@ -171,6 +190,7 @@ export function CheckoutForm({
                         value={values.notes}
                         onChange={(e) => setValues((v) => ({ ...v, notes: e.target.value }))}
                       />
+                      <div className="char-counter">{(values.notes ?? "").length} / 500</div>
                     </div>
 
                     <div className="col-12">

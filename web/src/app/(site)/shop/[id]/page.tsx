@@ -17,6 +17,7 @@ import { ProductCard } from "@/components/shop/product-card";
 import { ReviewSection } from "@/components/shop/review-section";
 import { InquiryForm } from "@/components/shop/inquiry-form";
 import { AddToCartForm } from "@/components/shop/add-to-cart-form";
+import { ProductGallery } from "@/components/shop/product-gallery";
 import { discountPercent } from "@/lib/utils/format";
 
 interface PageParams {
@@ -33,8 +34,15 @@ export async function generateMetadata({ params }: { params: Promise<PageParams>
   if (!product) return { title: "Product Not Found" };
 
   const description = product.description && product.description.length > 160 ? product.description.slice(0, 157) + "..." : product.description ?? undefined;
+  const image = product.image_url || undefined;
 
-  return { title: product.name, description };
+  return {
+    title: product.name,
+    description,
+    alternates: { canonical: `/shop/${id}` },
+    openGraph: { title: product.name, description, images: image ? [{ url: image }] : undefined },
+    twitter: { card: "summary_large_image", title: product.name, description, images: image ? [image] : undefined },
+  };
 }
 
 export default async function ProductDetailPage({
@@ -90,8 +98,49 @@ export default async function ProductDetailPage({
   if (product.image_url) thumbs.push(product.image_url);
   thumbs.push(...product.images.map((i) => i.image_path));
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description ?? undefined,
+    image: thumbs.length > 0 ? thumbs.map((t) => (t.startsWith("http") ? t : `${siteUrl}${t}`)) : undefined,
+    sku: String(product.id),
+    ...(product.category && { category: product.category.name }),
+    ...(product.review_count > 0 && {
+      aggregateRating: {
+        "@type": "AggregateRating",
+        ratingValue: product.average_rating,
+        reviewCount: product.review_count,
+      },
+    }),
+    ...(!product.is_custom_order && {
+      offers: {
+        "@type": "Offer",
+        priceCurrency: "INR",
+        price: product.price,
+        availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+        url: `${siteUrl}${productDetailPath}`,
+      },
+    }),
+  };
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: siteUrl || undefined },
+      { "@type": "ListItem", position: 2, name: "Products", item: siteUrl ? `${siteUrl}/shop` : undefined },
+      ...(product.category
+        ? [{ "@type": "ListItem", position: 3, name: product.category.name, item: siteUrl ? `${siteUrl}/shop?categoryId=${product.category_id}` : undefined }]
+        : []),
+      { "@type": "ListItem", position: product.category ? 4 : 3, name: product.name },
+    ],
+  };
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <div className="bg-wood-50 border-bottom border-wood py-3">
         <div className="container">
           <nav aria-label="Breadcrumb">
@@ -118,22 +167,7 @@ export default async function ProductDetailPage({
       <div className="container py-4">
         <div className="row g-4">
           <div className="col-lg-6">
-            <img
-              id="mainImage"
-              src={product.image_url || "/img/cat-custom.svg"}
-              alt={product.name}
-              className="gallery-main mb-3"
-              width={600}
-              height={450}
-            />
-
-            {thumbs.length > 1 && (
-              <div className="d-flex gap-2 flex-wrap">
-                {thumbs.map((src, i) => (
-                  <img key={i} src={src} alt={`${product.name} view ${i + 1}`} className={`gallery-thumb${i === 0 ? " active" : ""}`} loading="lazy" />
-                ))}
-              </div>
-            )}
+            <ProductGallery images={thumbs.length > 0 ? thumbs : ["/img/cat-custom.svg"]} alt={product.name} />
           </div>
 
           <div className="col-lg-6">

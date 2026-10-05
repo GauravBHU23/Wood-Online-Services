@@ -62,7 +62,10 @@ export type LoginInput = z.infer<typeof loginSchema>;
 
 export const profileSchema = z.object({
   fullName: z.string().trim().min(1, "Please enter your name").max(100),
-  phoneNumber: phoneSchema,
+  // Same mobileSchema as registration/checkout — this value is what pre-fills the checkout
+  // phone field (both read/write user_metadata.phone), so it can't be validated more loosely
+  // here than it is there, or a profile edit could produce a number checkout then rejects.
+  phoneNumber: mobileSchema,
   address: z.string().trim().max(300).optional().or(z.literal("")),
   city: z.string().trim().max(100).optional().or(z.literal("")),
   state: z.string().trim().max(100).optional().or(z.literal("")),
@@ -108,7 +111,9 @@ export type InquiryInput = z.infer<typeof inquirySchema>;
 
 export const addressSchema = z.object({
   shippingName: z.string().trim().min(1, "Name is required").max(100),
-  shippingPhone: phoneSchema,
+  // A real 10-digit Indian mobile, same as registration — a delivery call needs to actually
+  // reach someone, so this can't be looser than the number we already validated at signup.
+  shippingPhone: mobileSchema,
   shippingAddress: z.string().trim().min(1, "Address is required").max(300),
   shippingCity: z.string().trim().min(1, "City is required").max(100),
   shippingState: z.string().trim().min(1, "State is required").max(100),

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/types/database";
 
 export type Product = Database["public"]["Tables"]["products"]["Row"];
@@ -242,6 +243,39 @@ export async function getCategoriesWithCounts(): Promise<CategoryWithCount[]> {
   }
 
   return categories.map((c) => ({ ...c, productCount: counts.get(c.id) ?? 0 }));
+}
+
+export interface HomeStats {
+  productCount: number;
+  customersServed: number;
+  averageRating: number;
+  reviewCount: number;
+}
+
+/**
+ * Real, derivable trust-signal numbers for the home page stats strip — no invented claims.
+ * Orders are RLS-restricted to their own owner, so the sitewide count needs the admin client;
+ * only an aggregate number is returned, never order rows, so this stays safe for a public page.
+ */
+export async function getHomeStats(): Promise<HomeStats> {
+  const supabase = await createClient();
+  const admin = createAdminClient();
+  const [productsResult, ordersResult, reviewsResult] = await Promise.all([
+    supabase.from("products").select("id", { count: "exact", head: true }).eq("is_available", true),
+    admin.from("orders").select("id", { count: "exact", head: true }).neq("order_status", "cancelled"),
+    supabase.from("reviews").select("rating").eq("status", "approved"),
+  ]);
+
+  const reviewRows: { rating: number }[] = reviewsResult.data ?? [];
+  const averageRating =
+    reviewRows.length === 0 ? 0 : Math.round((reviewRows.reduce((sum, r) => sum + r.rating, 0) / reviewRows.length) * 10) / 10;
+
+  return {
+    productCount: productsResult.count ?? 0,
+    customersServed: ordersResult.count ?? 0,
+    averageRating,
+    reviewCount: reviewRows.length,
+  };
 }
 
 export async function getActiveCategories(): Promise<Category[]> {

@@ -66,6 +66,27 @@ export async function getApprovedReviewCount(productId: number): Promise<number>
   return result.count ?? 0;
 }
 
+export type Testimonial = Review & { product_name: string };
+
+/** Best approved reviews site-wide, for the home page testimonials section. */
+export async function getTopTestimonials(limit = 6): Promise<Testimonial[]> {
+  const supabase = await createClient();
+  const result = await supabase
+    .from("reviews")
+    .select("*, product:products(name)")
+    .eq("status", "approved")
+    .gte("rating", 4)
+    .not("comment", "is", null)
+    .order("helpful_count", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  const rows = (result.data ?? []) as (Review & { product: { name: string } | null })[];
+  return rows
+    .filter((r) => r.comment && r.comment.trim().length >= 12)
+    .map((r) => ({ ...r, product_name: r.product?.name ?? "" }));
+}
+
 export async function getUserReview(productId: number, userId: string): Promise<Review | null> {
   const supabase = await createClient();
   const result = await supabase.from("reviews").select("*").eq("product_id", productId).eq("user_id", userId).maybeSingle();

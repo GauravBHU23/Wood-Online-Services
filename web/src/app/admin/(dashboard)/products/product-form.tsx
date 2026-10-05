@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createProductAction, updateProductAction, deleteProductImageAction } from "@/lib/admin/product-actions";
@@ -39,6 +39,20 @@ export function ProductForm({
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [deletingImageId, setDeletingImageId] = useState<number | null>(null);
+  const savedRef = useRef(false);
+
+  // This form has ~12 fields plus image uploads — losing it to an accidental back/tab-close is
+  // a real cost, unlike the shorter single-purpose forms elsewhere in the app.
+  const isDirty = JSON.stringify(form) !== JSON.stringify(initial) || !!mainImage || galleryImages.length > 0;
+
+  useEffect(() => {
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (!isDirty || savedRef.current) return;
+      e.preventDefault();
+    }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -62,6 +76,7 @@ export function ProductForm({
         : await createProductAction(form, mainImage, galleryImages);
 
       if (result.success) {
+        savedRef.current = true;
         toast.success(result.message ?? "Saved.");
         router.push("/admin/products");
         router.refresh();

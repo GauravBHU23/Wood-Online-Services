@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { ProductWithCategory } from "@/lib/data/products";
 import { StarRating } from "@/components/shop/star-rating";
 import { AddToCartButton } from "@/components/shop/add-to-cart-button";
+import { QuickViewButton } from "@/components/shop/quick-view-button";
+import { LazyImage } from "@/components/ui/lazy-image";
 import { discountPercent } from "@/lib/utils/format";
 
 // Ported from Views/Shared/_ProductCard.cshtml — same classes/markup (.card-wood, .product-thumb,
@@ -11,19 +13,19 @@ export function ProductCard({ product }: { product: ProductWithCategory }) {
   const inStock = product.is_available && product.stock_quantity > 0;
 
   return (
-    <div className="card-wood d-flex flex-column h-100">
+    <div className="card-wood d-flex flex-column h-100 product-card-group">
       <Link href={`/shop/${product.id}`} className="position-relative d-block" aria-label={product.name}>
         <div className="product-thumb-wrap">
-          <img
+          <LazyImage
             src={product.image_url || "/img/cat-custom.svg"}
             alt={product.name}
             className="product-thumb"
-            loading="lazy"
-            decoding="async"
             width={400}
             height={300}
           />
         </div>
+
+        <QuickViewButton product={product} />
 
         <div className="position-absolute top-0 start-0 m-2 d-flex flex-column gap-1 align-items-start">
           {product.is_custom_order ? (
@@ -36,6 +38,9 @@ export function ProductCard({ product }: { product: ProductWithCategory }) {
 
         {!product.is_custom_order && !inStock && (
           <span className="badge bg-secondary position-absolute top-0 end-0 m-2">Out of Stock</span>
+        )}
+        {!product.is_custom_order && inStock && product.stock_quantity <= 3 && (
+          <span className="badge bg-danger position-absolute top-0 end-0 m-2">Only {product.stock_quantity} left!</span>
         )}
       </Link>
 

@@ -18,6 +18,8 @@ import { ReviewSection } from "@/components/shop/review-section";
 import { InquiryForm } from "@/components/shop/inquiry-form";
 import { AddToCartForm } from "@/components/shop/add-to-cart-form";
 import { ProductGallery } from "@/components/shop/product-gallery";
+import { TrackProductView } from "@/components/shop/track-product-view";
+import { RecentlyViewed } from "@/components/shop/recently-viewed";
 import { discountPercent } from "@/lib/utils/format";
 
 interface PageParams {
@@ -141,6 +143,7 @@ export default async function ProductDetailPage({
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      <TrackProductView productId={productId} />
       <div className="bg-wood-50 border-bottom border-wood py-3">
         <div className="container">
           <nav aria-label="Breadcrumb">
@@ -344,6 +347,8 @@ export default async function ProductDetailPage({
             </div>
           </div>
         )}
+
+        <RecentlyViewed excludeId={productId} standalone={false} />
       </div>
     </>
   );

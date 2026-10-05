@@ -42,6 +42,7 @@ const API_RATE_LIMITS: Array<{ prefix: string; policy: RateLimitPolicy }> = [
   { prefix: "/api/cart", policy: "general" },
   { prefix: "/api/chat", policy: "general" }, // /api/chat/greeting (ask is matched above, first)
   { prefix: "/api/payment/status", policy: "general" },
+  { prefix: "/api/products", policy: "general" }, // /api/products/by-ids, for the Recently Viewed strip
   { prefix: "/api/search", policy: "general" },
   { prefix: "/api/visitor", policy: "general" },
 ];

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { ConfirmProvider } from "@/components/ui/confirm-modal";
+import { QuickViewProvider } from "@/components/shop/quick-view-modal";
 import { FlashMessages } from "@/components/layout/flash-messages";
 import { readFlashes } from "@/lib/flash";
 import { getSiteSettingsPublic } from "@/lib/data/site-settings";
@@ -67,8 +68,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
         <ToastProvider>
           <ConfirmProvider>
-            <FlashMessages flashes={flashes} />
-            {children}
+            <QuickViewProvider>
+              <FlashMessages flashes={flashes} />
+              {children}
+            </QuickViewProvider>
           </ConfirmProvider>
         </ToastProvider>
       </body>

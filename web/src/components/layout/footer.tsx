@@ -36,6 +36,9 @@ export async function Footer() {
                 <Link href="/about">About Us</Link>
               </li>
               <li>
+                <Link href="/shipping-returns">Shipping &amp; Returns</Link>
+              </li>
+              <li>
                 <Link href="/contact">Contact</Link>
               </li>
               <li>

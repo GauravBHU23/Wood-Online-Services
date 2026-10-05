@@ -5,6 +5,7 @@ import { getSiteSettingsPublic } from "@/lib/data/site-settings";
 import { getTopTestimonials } from "@/lib/data/reviews";
 import { ProductCard } from "@/components/shop/product-card";
 import { TestimonialCard } from "@/components/shop/testimonial-card";
+import { RecentlyViewed } from "@/components/shop/recently-viewed";
 import { Reveal } from "@/components/ui/reveal";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 
@@ -199,8 +200,10 @@ export default async function HomePage() {
         </section>
       )}
 
+      <RecentlyViewed />
+
       {testimonials.length > 0 && (
-        <section className="py-5">
+        <section className="py-5 bg-wood-50">
           <div className="container">
             <h2 className="section-title text-center">What Our Customers Say</h2>
             <Reveal group className="row g-3 g-md-4">

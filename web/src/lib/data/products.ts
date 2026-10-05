@@ -278,6 +278,21 @@ export async function getHomeStats(): Promise<HomeStats> {
   };
 }
 
+/** Products for a client-supplied list of IDs (e.g. a "recently viewed" strip), newest-first. */
+export async function getProductsByIds(ids: number[]): Promise<ProductWithCategory[]> {
+  if (ids.length === 0) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("products")
+    .select("*, category:categories(*)")
+    .in("id", ids)
+    .eq("is_available", true);
+
+  const products = (data ?? []) as ProductWithCategory[];
+  const order = new Map(ids.map((id, i) => [id, i]));
+  return products.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+}
+
 export async function getActiveCategories(): Promise<Category[]> {
   const supabase = await createClient();
   const { data } = await supabase

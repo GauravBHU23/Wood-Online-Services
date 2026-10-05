@@ -155,6 +155,49 @@
 
 .wos-modal--danger .wos-modal__title { color: var(--danger); }
 
+/* --- Quick View ----------------------------------------------------------
+   Same overlay convention/z-index as .wos-modal-overlay above, but a wider,
+   content-shaped panel rather than the fixed-width confirm-dialog box. */
+.quick-view-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1090;
+  background: rgba(35, 22, 12, .55);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  backdrop-filter: blur(2px);
+}
+.quick-view-panel {
+  position: relative;
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  max-width: 760px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.quick-view-close {
+  position: absolute;
+  top: .75rem; right: .75rem;
+  z-index: 1;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, .85);
+  color: var(--wood-900);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+.quick-view-close:hover { background: #fff; }
+
+@media (max-width: 767.98px) {
+  .quick-view-panel .product-thumb-wrap { min-height: 180px !important; }
+}
+
 /* --- Full page loader --------------------------------------------------- */
 .wos-loader-overlay {
   position: fixed;

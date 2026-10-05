@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const STATIC_ROUTES = ["", "/shop", "/about", "/contact", "/privacy", "/terms", "/license"];
+const STATIC_ROUTES = ["", "/shop", "/about", "/contact", "/shipping-returns", "/privacy", "/terms", "/license"];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
